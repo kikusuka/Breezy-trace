@@ -1,6 +1,7 @@
 """Textual terminal interface for Breezy Trace."""
 
 from pathlib import Path
+from typing import ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -64,7 +65,7 @@ class TraceApp(App[None]):
     TITLE = "Breezy Trace"
     SUB_TITLE = "by Breezy Labs"
     CSS = THEME_CSS
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("q", "quit", "Quit"),
         Binding("ctrl+p", "focus_projects", "Projects"),
         Binding("ctrl+h", "home", "Home"),
