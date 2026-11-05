@@ -9,6 +9,7 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import DataTable, Footer, Header, Static
 
 from breezy_trace.git import inspect_status
+from breezy_trace.journal import JournalStore
 from breezy_trace.models import Project
 from breezy_trace.registry import ProjectRegistry
 
@@ -136,6 +137,19 @@ class TraceApp(App[None]):
 
     def show_project(self, project: Project) -> None:
         status = inspect_status(Path(project.path))
+        journal = JournalStore(self.registry.db_path)
+        entries = journal.list_entries(project, limit=3)
+        tasks = journal.list_tasks(project, status="open")
+        decisions = journal.list_decisions(project, limit=2)
+        recent_notes = "\\n".join(
+            f"• {entry['title']}" for entry in entries
+        ) or "No notes yet — use: breezy-trace note \\"Title\\""
+        open_tasks = "\\n".join(
+            f"• {task['title']}" for task in tasks[:5]
+        ) or "No open tasks"
+        recent_decisions = "\\n".join(
+            f"• {item['title']}: {item['decision']}" for item in decisions
+        ) or "No decisions recorded"
         detail = (
             f"[bold #BAE6FD]{project.name}[/bold #BAE6FD]\n"
             f"[dim]{project.path}[/dim]\n\n"
