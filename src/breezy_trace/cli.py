@@ -6,7 +6,7 @@ from pathlib import Path
 
 from breezy_trace import __version__\nfrom breezy_trace.backup import backup_database, restore_database\nfrom breezy_trace.config import database_path, data_dir
 from breezy_trace.app import TraceApp
-from breezy_trace.git import inspect_status, recent_commits
+from breezy_trace.git import inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
 from breezy_trace.registry import ProjectError, ProjectRegistry
 
@@ -29,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("projects", help="List registered projects.")
     commands.add_parser("home", help="Open the global project dashboard.")\n\n    backup = commands.add_parser("backup", help="Create a portable backup of local project data.")\n    backup.add_argument("--output", type=Path, help="Backup file path (defaults to app data directory).")\n\n    restore = commands.add_parser("restore", help="Restore project data from a backup.")\n    restore.add_argument("backup", type=Path, help="Path to a Breezy Trace .sqlite3 backup.")\n    restore.add_argument("--yes", action="store_true", help="Confirm replacing the current local database.")
     commands.add_parser("status", help="Show read-only Git status for the current project.")
+    commands.add_parser("inspect", help="Show detailed read-only Git changes, conflicts, and stashes.")
     commands.add_parser("resume", help="Show the context needed to resume the current project.")
 
     note = commands.add_parser("note", help="Add a note to the current registered project.")
@@ -167,13 +168,25 @@ def main() -> None:
             print(f"{project.name}\n  {project.path}")
         return
 
-    if args.command in {"status", "resume"}:
+    if args.command in {"status", "resume", "inspect"}:
         project = _current_project(parser, registry)
         if args.command == "status":
             status = inspect_status(Path(project.path))
             print(f"{project.name} — {status.branch}")
             print(status.summary)
             print(f"Ahead: {status.ahead}  Behind: {status.behind}")
+        elif args.command == "inspect":
+            status = inspect_status(Path(project.path))
+            details = inspect_details(Path(project.path))
+            print(f"{project.name} — {status.branch}")
+            print(f"Working tree: {status.summary}")
+            print(f"Remote tracking: ahead {status.ahead}, behind {status.behind}")
+            print(f"Merge conflicts: {details['conflicts']}")
+            print(f"Stashes: {details['stashes']}")
+            print("\nSTAGED DIFF")
+            print(details["staged_diff"] or "No staged changes")
+            print("\nUNSTAGED DIFF")
+            print(details["unstaged_diff"] or "No unstaged tracked changes")
         else:
             _print_resume(project, registry)
         return
