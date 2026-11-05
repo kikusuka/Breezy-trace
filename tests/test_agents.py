@@ -2,7 +2,11 @@ import json
 import subprocess
 from pathlib import Path
 
-from breezy_trace.agents import (\n    AgentSessionStore,\n    discover_claude_sessions,\n    discover_opencode_sessions,\n)
+from breezy_trace.agents import (
+    AgentSessionStore,
+    discover_claude_sessions,
+    discover_opencode_sessions,
+)
 from breezy_trace.registry import ProjectRegistry
 
 
