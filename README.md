@@ -18,7 +18,7 @@ Breezy Trace is a local-first developer workspace from **Breezy Labs**. It bring
 - Global project dashboard and registered-project selector.
 - Git-root detection and local project registration.
 - SQLite schema for project notes, tasks, decisions, sessions, file events, commits, and remote snapshots.
-- Read-only Git working-tree inspection.
+- Read-only Git working-tree inspection.\n- Project Journal storage for notes, tasks, and recorded decisions.\n- Project overview surfaces recent notes, open tasks, and recent decisions.
 
 ## Development
 
