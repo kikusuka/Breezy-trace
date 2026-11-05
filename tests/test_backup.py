@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 from breezy_trace.backup import backup_database, restore_database
-from breezy_trace.registry import ProjectRegistry
 from breezy_trace.journal import JournalStore
+from breezy_trace.registry import ProjectRegistry
 
 
 def make_database(path: Path) -> None:
