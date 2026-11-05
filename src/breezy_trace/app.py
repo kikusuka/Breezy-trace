@@ -143,7 +143,7 @@ class TraceApp(App[None]):
         decisions = journal.list_decisions(project, limit=2)
         recent_notes = "\n".join(
             f"• {entry['title']}" for entry in entries
-        ) or "No notes yet — use: breezy-trace note \\"Title\\""
+        ) or "No notes yet — use: breezy-trace note TITLE"
         open_tasks = "\\n".join(
             f"• {task['title']}" for task in tasks[:5]
         ) or "No open tasks"
