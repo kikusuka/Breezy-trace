@@ -50,6 +50,10 @@ Then run `breezy-trace` from that registered repository to open its overview. Ru
 | `breezy-trace projects` | List registered projects |
 | `breezy-trace home` | Open the global project selector |
 | `breezy-trace status` | Show read-only Git status |
+| `breezy-trace inspect` | Show staged/unstaged diff summaries, merge conflicts, and stash count |
+| `breezy-trace backup` | Create a consistent portable SQLite backup |
+| `breezy-trace backup --output ./trace-backup.sqlite3` | Choose a backup destination |
+| `breezy-trace restore ./trace-backup.sqlite3 --yes` | Restore local data after explicit confirmation |
 | `breezy-trace resume` | Show notes, open tasks, decisions, Git state, and recent local commits |
 | `breezy-trace note "Title" --body "..."` | Save project context |
 | `breezy-trace journal` | List recent notes |
@@ -64,7 +68,7 @@ Journal commands operate on the registered project containing the current workin
 
 ## Data and storage
 
-The application database is stored in the operating system's per-user application data directory (resolved with `platformdirs`). SQLite uses foreign keys and WAL mode. Project registration and journal records are local to that database; your Git repository is not modified.
+The application database is stored in the operating system's per-user application data directory (resolved with `platformdirs`). SQLite uses foreign keys and WAL mode. Project registration and journal records are local to that database; your Git repository is not modified. Use `breezy-trace backup` before moving machines or making risky changes. Restore validates the SQLite integrity and Breezy Trace schema before replacing the database; always close other Breezy Trace processes first. Restore requires the explicit `--yes` flag.
 
 Unregistering a project removes its registry record and associated journal data through SQLite foreign-key cascading. Back up the application data directory before manually changing or deleting it.
 
@@ -80,7 +84,7 @@ python -m twine check dist/*
 
 ## Current scope
 
-The initial release focuses on reliable project registration, a terminal dashboard, project notes/tasks/decisions, Git working-tree status, recent local commit history, and a resume summary. Coding-agent session integrations, file-activity correlation, remote-provider APIs, and AST indexing are not implemented yet and are not claimed as available.
+The current release candidate includes project registration, a terminal dashboard, notes/tasks/decisions, Git working-tree status, staged and unstaged diff summaries, conflict and stash counts, recent local commit history, a resume summary, and portable SQLite backup/restore. Coding-agent session integrations, file-activity correlation, remote-provider APIs, and AST indexing are not implemented yet and are not claimed as available.
 
 ## License
 
