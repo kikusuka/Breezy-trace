@@ -1,5 +1,7 @@
 """Textual terminal interface for Breezy Trace."""
 
+from pathlib import Path
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
@@ -48,15 +50,13 @@ Screen {
     text-style: bold;
     margin-bottom: 1;
 }
-.muted {
-    color: #94A3B8;
-}
 #footer-note {
     height: auto;
     padding: 0 2 1 2;
     color: #94A3B8;
 }
 """
+
 
 class TraceApp(App[None]):
     """Global project dashboard and project overview."""
@@ -134,7 +134,7 @@ class TraceApp(App[None]):
             self.show_project(project)
 
     def show_project(self, project: Project) -> None:
-        status = inspect_status(__import__("pathlib").Path(project.path))
+        status = inspect_status(Path(project.path))
         detail = (
             f"[bold #BAE6FD]{project.name}[/bold #BAE6FD]\n"
             f"[dim]{project.path}[/dim]\n\n"

@@ -60,6 +60,16 @@ def main() -> None:
         return
 
     if remainder:
+        if args.command is None and len(remainder) == 1:
+            project = registry.find_by_path(Path(remainder[0]))
+            if project is None:
+                parser.error(
+                    f"{remainder[0]} is not a registered Git project. "
+                    "Register it first with: breezy-trace register <path>"
+                )
+            registry.mark_opened(project.id)
+            TraceApp(project=project).run()
+            return
         parser.error(f"Unrecognized arguments: {' '.join(remainder)}")
 
     project = None

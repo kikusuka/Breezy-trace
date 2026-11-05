@@ -20,7 +20,11 @@ def inspect_status(path: Path) -> GitStatus:
 
     lines = command.stdout.splitlines()
     branch_line = lines[0] if lines else "## unknown"
-    branch = branch_line.removeprefix("## ").split("...")[0].split()[0]
+    branch_info = branch_line.removeprefix("## ")
+    if branch_info.startswith("No commits yet on "):
+        branch = branch_info.removeprefix("No commits yet on ").strip()
+    else:
+        branch = branch_info.split("...", 1)[0].split(" ", 1)[0]
     ahead = behind = staged = modified = untracked = 0
 
     if "[" in branch_line and "]" in branch_line:
