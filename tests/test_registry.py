@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from breezy_trace.journal import JournalStore
 from breezy_trace.registry import ProjectError, ProjectRegistry
 
 
@@ -59,3 +60,18 @@ def test_unregister_removes_project(tmp_path: Path) -> None:
 
     assert registry.unregister(project.name) is True
     assert registry.list_projects() == []
+
+
+
+def test_unregister_cascades_project_journal_data(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path / "sample")
+    db_path = tmp_path / "trace.sqlite3"
+    registry = ProjectRegistry(db_path)
+    project = registry.register(repo)
+    store = JournalStore(db_path)
+    store.add_note(project, "Private context", "Should be removed with project.")
+    store.add_task(project, "Finish cleanup")
+
+    assert registry.unregister(project.name) is True
+    with pytest.raises(ValueError, match="not registered"):
+        store.list_entries(project)
