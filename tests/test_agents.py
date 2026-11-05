@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 from breezy_trace.agents import AgentSessionStore, discover_claude_sessions, discover_opencode_sessions
@@ -8,7 +9,6 @@ from breezy_trace.registry import ProjectRegistry
 def make_project(tmp_path: Path):
     project_path = tmp_path / "project"
     project_path.mkdir()
-    import subprocess
     subprocess.run(["git", "init", str(project_path)], check=True, capture_output=True)
     project = ProjectRegistry(tmp_path / "trace.sqlite3").register(project_path)
     return project, tmp_path / "trace.sqlite3"
