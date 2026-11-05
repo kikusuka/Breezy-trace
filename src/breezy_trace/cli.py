@@ -6,6 +6,7 @@ from pathlib import Path
 
 from breezy_trace import __version__
 from breezy_trace.app import TraceApp
+from breezy_trace.git import inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
 from breezy_trace.registry import ProjectError, ProjectRegistry
 
@@ -27,6 +28,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser("projects", help="List registered projects.")
     commands.add_parser("home", help="Open the global project dashboard.")
+    commands.add_parser("status", help="Show read-only Git status for the current project.")
+    commands.add_parser("resume", help="Show the context needed to resume the current project.")
 
     note = commands.add_parser("note", help="Add a note to the current registered project.")
     note.add_argument("title")
@@ -51,18 +54,61 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _current_project(parser: argparse.ArgumentParser, registry: ProjectRegistry):
+    project = registry.find_by_path(Path.cwd())
+    if project is None:
+        parser.error(
+            "The current directory is not a registered Git project. "
+            "Run: breezy-trace register ."
+        )
+    return project
+
+
+def _print_resume(project, registry: ProjectRegistry) -> None:
+    status = inspect_status(Path(project.path))
+    store = JournalStore(registry.db_path)
+    print(f"{project.name} — {project.path}")
+    print(f"Branch: {status.branch}")
+    print(f"Working tree: {status.summary}")
+    print(f"Remote tracking: ahead {status.ahead}, behind {status.behind}")
+
+    tasks = store.list_tasks(project, status="open")
+    print(f"\nNEXT TASKS ({len(tasks)})")
+    for item in tasks[:10]:
+        suffix = f" — {item['details']}" if item["details"] else ""
+        print(f"- {item['title']}{suffix}")
+    if not tasks:
+        print("- No open tasks recorded.")
+
+    notes = store.list_entries(project, limit=5)
+    print("\nRECENT NOTES")
+    for entry in notes:
+        print(f"- {entry['title']}: {entry['body']}" if entry["body"] else f"- {entry['title']}")
+    if not notes:
+        print("- No notes recorded.")
+
+    decisions = store.list_decisions(project, limit=3)
+    print("\nRECENT DECISIONS")
+    for item in decisions:
+        print(f"- {item['title']}: {item['decision']}")
+    if not decisions:
+        print("- No decisions recorded.")
+
+    commits = recent_commits(Path(project.path), limit=5)
+    print("\nRECENT COMMITS (local history)")
+    for commit in commits:
+        print(f"- {commit['date']} {commit['sha']} {commit['subject']}")
+    if not commits:
+        print("- No commits available.")
+
+
 def main() -> None:
     parser = build_parser()
     args, remainder = parser.parse_known_args()
     registry = ProjectRegistry()
 
     if args.command in {"note", "task", "tasks", "done", "journal", "decision"}:
-        project = registry.find_by_path(Path.cwd())
-        if project is None:
-            parser.error(
-                "The current directory is not a registered Git project. "
-                "Run: breezy-trace register ."
-            )
+        project = _current_project(parser, registry)
         store = JournalStore(registry.db_path)
         try:
             if args.command == "note":
@@ -84,7 +130,7 @@ def main() -> None:
             elif args.command == "journal":
                 entries = store.list_entries(project)
                 if not entries:
-                    print("No journal entries yet. Add one with: breezy-trace note \"Title\"")
+                    print('No journal entries yet. Add one with: breezy-trace note "Title"')
                 for entry in entries:
                     print(f"{entry['created_at']}  {entry['title']}")
                     if entry["body"]:
@@ -119,6 +165,17 @@ def main() -> None:
             return
         for project in projects:
             print(f"{project.name}\n  {project.path}")
+        return
+
+    if args.command in {"status", "resume"}:
+        project = _current_project(parser, registry)
+        if args.command == "status":
+            status = inspect_status(Path(project.path))
+            print(f"{project.name} — {status.branch}")
+            print(status.summary)
+            print(f"Ahead: {status.ahead}  Behind: {status.behind}")
+        else:
+            _print_resume(project, registry)
         return
 
     if remainder:
