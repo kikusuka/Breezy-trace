@@ -7,8 +7,7 @@ session metadata documents are inspected.
 import hashlib
 import json
 import os
-import sqlite3
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -166,9 +165,14 @@ class AgentSessionStore:
                 ).hexdigest()
                 cursor = connection.execute(
                     """
-                    INSERT OR IGNORE INTO agent_sessions
+                    INSERT INTO agent_sessions
                     (id, project_id, provider, external_id, started_at, ended_at, source, metadata_json)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        started_at = excluded.started_at,
+                        ended_at = excluded.ended_at,
+                        source = excluded.source,
+                        metadata_json = excluded.metadata_json
                     """,
                     (
                         stable_id, project.id, session.provider, session.external_id,
