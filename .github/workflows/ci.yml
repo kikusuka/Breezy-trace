@@ -29,3 +29,9 @@ jobs:
         run: |
           python -m build
           python -m twine check dist/*
+      - name: Install built wheel in a clean environment
+        run: |
+          python -m venv /tmp/breezy-trace-wheel-test
+          /tmp/breezy-trace-wheel-test/bin/python -m pip install dist/*.whl
+          /tmp/breezy-trace-wheel-test/bin/breezy-trace --version
+          /tmp/breezy-trace-wheel-test/bin/btrace --help

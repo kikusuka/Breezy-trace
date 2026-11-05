@@ -2,11 +2,14 @@
 
 import argparse
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 from breezy_trace import __version__
 from breezy_trace.app import TraceApp
-from breezy_trace.git import inspect_status, recent_commits
+from breezy_trace.backup import backup_database, restore_database
+from breezy_trace.config import data_dir, database_path
+from breezy_trace.git import inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
 from breezy_trace.registry import ProjectError, ProjectRegistry
 
@@ -28,7 +31,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser("projects", help="List registered projects.")
     commands.add_parser("home", help="Open the global project dashboard.")
+
+    backup = commands.add_parser("backup", help="Create a portable backup of local project data.")
+    backup.add_argument("--output", type=Path, help="Backup file path (defaults to app data directory).")
+
+    restore = commands.add_parser("restore", help="Restore project data from a backup.")
+    restore.add_argument("backup", type=Path, help="Path to a Breezy Trace .sqlite3 backup.")
+    restore.add_argument("--yes", action="store_true", help="Confirm replacing the current local database.")
     commands.add_parser("status", help="Show read-only Git status for the current project.")
+    commands.add_parser("inspect", help="Show detailed read-only Git changes, conflicts, and stashes.")
     commands.add_parser("resume", help="Show the context needed to resume the current project.")
 
     note = commands.add_parser("note", help="Add a note to the current registered project.")
@@ -142,6 +153,25 @@ def main() -> None:
             parser.error(str(error))
         return
 
+    if args.command == "backup":
+        target = args.output or (data_dir() / f"breezy-trace-backup-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.sqlite3")
+        try:
+            backup_database(database_path(), target)
+        except (OSError, ValueError, RuntimeError) as error:
+            parser.error(str(error))
+        print(f"Backup created: {target.resolve()}")
+        return
+
+    if args.command == "restore":
+        if not args.yes:
+            parser.error("Restore replaces the current local database. Re-run with --yes after making a backup.")
+        try:
+            restore_database(args.backup, database_path())
+        except (OSError, ValueError, RuntimeError) as error:
+            parser.error(str(error))
+        print("Project data restored. Restart Breezy Trace before continuing.")
+        return
+
     if args.command == "register":
         try:
             project = registry.register(Path(args.path), args.name)
@@ -167,13 +197,25 @@ def main() -> None:
             print(f"{project.name}\n  {project.path}")
         return
 
-    if args.command in {"status", "resume"}:
+    if args.command in {"status", "resume", "inspect"}:
         project = _current_project(parser, registry)
         if args.command == "status":
             status = inspect_status(Path(project.path))
             print(f"{project.name} — {status.branch}")
             print(status.summary)
             print(f"Ahead: {status.ahead}  Behind: {status.behind}")
+        elif args.command == "inspect":
+            status = inspect_status(Path(project.path))
+            details = inspect_details(Path(project.path))
+            print(f"{project.name} — {status.branch}")
+            print(f"Working tree: {status.summary}")
+            print(f"Remote tracking: ahead {status.ahead}, behind {status.behind}")
+            print(f"Merge conflicts: {details['conflicts']}")
+            print(f"Stashes: {details['stashes']}")
+            print("\nSTAGED DIFF")
+            print(details["staged_diff"] or "No staged changes")
+            print("\nUNSTAGED DIFF")
+            print(details["unstaged_diff"] or "No unstaged tracked changes")
         else:
             _print_resume(project, registry)
         return
