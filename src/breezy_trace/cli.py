@@ -108,6 +108,13 @@ def _print_resume(project, registry: ProjectRegistry) -> None:
     if not decisions:
         print("- No decisions recorded.")
 
+    sessions = AgentSessionStore(registry.db_path).list_sessions(project, limit=5)
+    print("\nRECENT AGENT SESSIONS")
+    for session in sessions:
+        print(f"- {session['provider']} {session['external_id']} ({session['started_at'] or 'unknown start'})")
+    if not sessions:
+        print("- No sessions indexed. Run: breezy-trace sessions --sync")
+
     commits = recent_commits(Path(project.path), limit=5)
     print("\nRECENT COMMITS (local history)")
     for commit in commits:
