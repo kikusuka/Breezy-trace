@@ -63,7 +63,6 @@ def test_session_sync_is_repeatable_and_project_scoped(tmp_path: Path, monkeypat
     project, db_path = make_project(tmp_path)
     other_path = tmp_path / "other"
     other_path.mkdir()
-    import subprocess
     subprocess.run(["git", "init", str(other_path)], check=True, capture_output=True)
     other = ProjectRegistry(db_path).register(other_path)
 
