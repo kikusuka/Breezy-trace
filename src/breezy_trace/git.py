@@ -88,3 +88,35 @@ def recent_commits(path: Path, limit: int = 5) -> list[dict[str, str]]:
         if len(parts) == 3:
             commits.append({"sha": parts[0], "date": parts[1], "subject": parts[2]})
     return commits
+
+
+def inspect_details(path: Path) -> dict[str, object]:
+    """Return additional read-only Git signals for a project overview."""
+    status = subprocess.run(
+        ["git", "-C", str(path), "status", "--porcelain=v1", "--untracked-files=all"],
+        capture_output=True, text=True, check=False,
+    )
+    if status.returncode != 0:
+        return {"conflicts": 0, "stashes": 0, "staged_diff": "", "unstaged_diff": ""}
+    conflicts = sum(
+        1 for line in status.stdout.splitlines()
+        if len(line) >= 2 and ("U" in line[:2] or line[:2] in {"AA", "DD"})
+    )
+    stash = subprocess.run(
+        ["git", "-C", str(path), "stash", "list"],
+        capture_output=True, text=True, check=False,
+    )
+    staged = subprocess.run(
+        ["git", "-C", str(path), "diff", "--cached", "--stat"],
+        capture_output=True, text=True, check=False,
+    )
+    unstaged = subprocess.run(
+        ["git", "-C", str(path), "diff", "--stat"],
+        capture_output=True, text=True, check=False,
+    )
+    return {
+        "conflicts": conflicts,
+        "stashes": len(stash.stdout.splitlines()) if stash.returncode == 0 else 0,
+        "staged_diff": staged.stdout.strip(),
+        "unstaged_diff": unstaged.stdout.strip(),
+    }
