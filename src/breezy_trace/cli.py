@@ -42,7 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
     done = commands.add_parser("done", help="Mark a project task as complete.")
     done.add_argument("task_id")
 
-    journal = commands.add_parser("journal", help="Show recent notes for the current project.")
+    commands.add_parser("journal", help="Show recent notes for the current project.")
 
     decision = commands.add_parser("decision", help="Record a project decision.")
     decision.add_argument("title")
