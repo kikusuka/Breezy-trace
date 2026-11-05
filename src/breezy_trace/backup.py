@@ -19,12 +19,14 @@ def backup_database(source: Path, destination: Path) -> Path:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(destination.name + ".tmp")
     try:
-        with sqlite3.connect(f"file:{source}?mode=ro", uri=True) as src:
-            with sqlite3.connect(temporary) as dst:
-                src.backup(dst)
-                result = dst.execute("PRAGMA integrity_check").fetchone()[0]
-                if result != "ok":
-                    raise ValueError(f"Database integrity check failed: {result}")
+        with (
+            sqlite3.connect(f"file:{source}?mode=ro", uri=True) as src,
+            sqlite3.connect(temporary) as dst,
+        ):
+            src.backup(dst)
+            result = dst.execute("PRAGMA integrity_check").fetchone()[0]
+            if result != "ok":
+                raise ValueError(f"Database integrity check failed: {result}")
         os.replace(temporary, destination)
     finally:
         temporary.unlink(missing_ok=True)
