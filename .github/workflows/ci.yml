@@ -25,3 +25,7 @@ jobs:
         run: ruff check .
       - name: Run tests
         run: pytest
+      - name: Build and validate distributions
+        run: |
+          python -m build
+          python -m twine check dist/*
