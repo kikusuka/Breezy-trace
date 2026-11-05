@@ -144,10 +144,10 @@ class TraceApp(App[None]):
         recent_notes = "\n".join(
             f"• {entry['title']}" for entry in entries
         ) or "No notes yet — use: breezy-trace note TITLE"
-        open_tasks = "\\n".join(
+        open_tasks = "\n".join(
             f"• {task['title']}" for task in tasks[:5]
         ) or "No open tasks"
-        recent_decisions = "\\n".join(
+        recent_decisions = "\n".join(
             f"• {item['title']}: {item['decision']}" for item in decisions
         ) or "No decisions recorded"
         detail = (
