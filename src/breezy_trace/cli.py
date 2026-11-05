@@ -6,6 +6,7 @@ from pathlib import Path
 
 from breezy_trace import __version__
 from breezy_trace.app import TraceApp
+from breezy_trace.journal import JournalStore
 from breezy_trace.registry import ProjectError, ProjectRegistry
 
 
@@ -26,6 +27,27 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser("projects", help="List registered projects.")
     commands.add_parser("home", help="Open the global project dashboard.")
+
+    note = commands.add_parser("note", help="Add a note to the current registered project.")
+    note.add_argument("title")
+    note.add_argument("--body", default="", help="Note content.")
+
+    task = commands.add_parser("task", help="Add a task to the current registered project.")
+    task.add_argument("title")
+    task.add_argument("--details", default="", help="Additional task details.")
+
+    tasks = commands.add_parser("tasks", help="List tasks for the current registered project.")
+    tasks.add_argument("--all", action="store_true", help="Include completed tasks.")
+
+    done = commands.add_parser("done", help="Mark a project task as complete.")
+    done.add_argument("task_id")
+
+    journal = commands.add_parser("journal", help="Show recent notes for the current project.")
+
+    decision = commands.add_parser("decision", help="Record a project decision.")
+    decision.add_argument("title")
+    decision.add_argument("decision")
+    decision.add_argument("--context", default="", help="Context behind the decision.")
     return parser
 
 
@@ -33,6 +55,46 @@ def main() -> None:
     parser = build_parser()
     args, remainder = parser.parse_known_args()
     registry = ProjectRegistry()
+
+    if args.command in {"note", "task", "tasks", "done", "journal", "decision"}:
+        project = registry.find_by_path(Path.cwd())
+        if project is None:
+            parser.error(
+                "The current directory is not a registered Git project. "
+                "Run: breezy-trace register ."
+            )
+        store = JournalStore(registry.db_path)
+        try:
+            if args.command == "note":
+                store.add_note(project, args.title, args.body)
+                print(f"Saved note: {args.title}")
+            elif args.command == "task":
+                task_id = store.add_task(project, args.title, args.details)
+                print(f"Added task: {args.title} ({task_id})")
+            elif args.command == "tasks":
+                for item in store.list_tasks(project, None if args.all else "open"):
+                    marker = "x" if item["status"] == "done" else " "
+                    print(f"[{marker}] {item['title']}  ({item['id']})")
+            elif args.command == "done":
+                if store.complete_task(project, args.task_id):
+                    print("Task marked complete.")
+                else:
+                    print("No open task matched that ID.", file=sys.stderr)
+                    raise SystemExit(1)
+            elif args.command == "journal":
+                entries = store.list_entries(project)
+                if not entries:
+                    print("No journal entries yet. Add one with: breezy-trace note \"Title\"")
+                for entry in entries:
+                    print(f"{entry['created_at']}  {entry['title']}")
+                    if entry["body"]:
+                        print(f"  {entry['body']}")
+            elif args.command == "decision":
+                store.add_decision(project, args.title, args.decision, args.context)
+                print(f"Recorded decision: {args.title}")
+        except ValueError as error:
+            parser.error(str(error))
+        return
 
     if args.command == "register":
         try:
