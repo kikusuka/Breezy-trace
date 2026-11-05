@@ -4,7 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from breezy_trace import __version__
+from breezy_trace import __version__\nfrom breezy_trace.backup import backup_database, restore_database\nfrom breezy_trace.config import database_path, data_dir
 from breezy_trace.app import TraceApp
 from breezy_trace.git import inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
@@ -27,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     unregister.add_argument("project")
 
     commands.add_parser("projects", help="List registered projects.")
-    commands.add_parser("home", help="Open the global project dashboard.")
+    commands.add_parser("home", help="Open the global project dashboard.")\n\n    backup = commands.add_parser("backup", help="Create a portable backup of local project data.")\n    backup.add_argument("--output", type=Path, help="Backup file path (defaults to app data directory).")\n\n    restore = commands.add_parser("restore", help="Restore project data from a backup.")\n    restore.add_argument("backup", type=Path, help="Path to a Breezy Trace .sqlite3 backup.")\n    restore.add_argument("--yes", action="store_true", help="Confirm replacing the current local database.")
     commands.add_parser("status", help="Show read-only Git status for the current project.")
     commands.add_parser("resume", help="Show the context needed to resume the current project.")
 
@@ -142,7 +142,7 @@ def main() -> None:
             parser.error(str(error))
         return
 
-    if args.command == "register":
+    if args.command == "backup":\n        target = args.output or (data_dir() / f"breezy-trace-backup-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.sqlite3")\n        try:\n            backup_database(database_path(), target)\n        except (OSError, ValueError, RuntimeError) as error:\n            parser.error(str(error))\n        print(f"Backup created: {target.resolve()}")\n        return\n\n    if args.command == "restore":\n        if not args.yes:\n            parser.error("Restore replaces the current local database. Re-run with --yes after making a backup.")\n        try:\n            restore_database(args.backup, database_path())\n        except (OSError, ValueError, RuntimeError) as error:\n            parser.error(str(error))\n        print("Project data restored. Restart Breezy Trace before continuing.")\n        return\n\n    if args.command == "register":
         try:
             project = registry.register(Path(args.path), args.name)
         except ProjectError as error:
