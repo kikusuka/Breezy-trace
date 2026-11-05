@@ -143,7 +143,26 @@ def main() -> None:
             parser.error(str(error))
         return
 
-    if args.command == "backup":\n        target = args.output or (data_dir() / f"breezy-trace-backup-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.sqlite3")\n        try:\n            backup_database(database_path(), target)\n        except (OSError, ValueError, RuntimeError) as error:\n            parser.error(str(error))\n        print(f"Backup created: {target.resolve()}")\n        return\n\n    if args.command == "restore":\n        if not args.yes:\n            parser.error("Restore replaces the current local database. Re-run with --yes after making a backup.")\n        try:\n            restore_database(args.backup, database_path())\n        except (OSError, ValueError, RuntimeError) as error:\n            parser.error(str(error))\n        print("Project data restored. Restart Breezy Trace before continuing.")\n        return\n\n    if args.command == "register":
+    if args.command == "backup":
+        target = args.output or (data_dir() / f"breezy-trace-backup-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.sqlite3")
+        try:
+            backup_database(database_path(), target)
+        except (OSError, ValueError, RuntimeError) as error:
+            parser.error(str(error))
+        print(f"Backup created: {target.resolve()}")
+        return
+
+    if args.command == "restore":
+        if not args.yes:
+            parser.error("Restore replaces the current local database. Re-run with --yes after making a backup.")
+        try:
+            restore_database(args.backup, database_path())
+        except (OSError, ValueError, RuntimeError) as error:
+            parser.error(str(error))
+        print("Project data restored. Restart Breezy Trace before continuing.")
+        return
+
+    if args.command == "register":
         try:
             project = registry.register(Path(args.path), args.name)
         except ProjectError as error:
