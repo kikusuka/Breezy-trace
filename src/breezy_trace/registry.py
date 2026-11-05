@@ -27,12 +27,15 @@ class ProjectRegistry:
         candidate = path.expanduser().resolve()
         if not candidate.exists():
             raise ProjectError(f"Path does not exist: {candidate}")
-        result = subprocess.run(
-            ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except FileNotFoundError as error:
+            raise ProjectError("Git is not installed or is not available on PATH.") from error
         if result.returncode != 0:
             raise ProjectError(f"Not inside a Git repository: {candidate}")
         return Path(result.stdout.strip()).resolve()

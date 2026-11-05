@@ -60,3 +60,31 @@ def inspect_status(path: Path) -> GitStatus:
         clean=total == 0,
         summary=summary,
     )
+
+
+def recent_commits(path: Path, limit: int = 5) -> list[dict[str, str]]:
+    """Return recent local commits without fetching or changing repository state."""
+    if not 1 <= limit <= 50:
+        raise ValueError("Commit limit must be between 1 and 50.")
+    command = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(path),
+            "log",
+            f"-{limit}",
+            "--date=short",
+            "--format=%h%x1f%ad%x1f%s",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if command.returncode != 0:
+        return []
+    commits: list[dict[str, str]] = []
+    for line in command.stdout.splitlines():
+        parts = line.split("\x1f", 2)
+        if len(parts) == 3:
+            commits.append({"sha": parts[0], "date": parts[1], "subject": parts[2]})
+    return commits
