@@ -5,9 +5,9 @@ import sys
 from pathlib import Path
 
 from breezy_trace import __version__
-from breezy_trace.backup import backup_database, restore_database
-from breezy_trace.config import database_path, data_dir
 from breezy_trace.app import TraceApp
+from breezy_trace.backup import backup_database, restore_database
+from breezy_trace.config import data_dir, database_path
 from breezy_trace.git import inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
 from breezy_trace.registry import ProjectError, ProjectRegistry
