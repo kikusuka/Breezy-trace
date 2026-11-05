@@ -141,7 +141,7 @@ class TraceApp(App[None]):
         entries = journal.list_entries(project, limit=3)
         tasks = journal.list_tasks(project, status="open")
         decisions = journal.list_decisions(project, limit=2)
-        recent_notes = "\\n".join(
+        recent_notes = "\n".join(
             f"• {entry['title']}" for entry in entries
         ) or "No notes yet — use: breezy-trace note \\"Title\\""
         open_tasks = "\\n".join(
@@ -156,7 +156,10 @@ class TraceApp(App[None]):
             f"[bold]Branch[/bold]\n{status.branch}\n\n"
             f"[bold]Git state[/bold]\n{status.summary}\n"
             f"Ahead: {status.ahead}  Behind: {status.behind}\n\n"
-            "[dim]Project journal and agent history are next in the build sequence.[/dim]"
+            f"[bold #38BDF8]RECENT NOTES[/bold #38BDF8]\n{recent_notes}\n\n"
+            f"[bold #38BDF8]OPEN TASKS ({len(tasks)})[/bold #38BDF8]\n{open_tasks}\n\n"
+            f"[bold #38BDF8]RECENT DECISIONS[/bold #38BDF8]\n{recent_decisions}\n\n"
+            "[dim]Add context with: breezy-trace note, task, or decision.[/dim]"
         )
         self.query_one("#project-detail", Static).update(detail)
 
