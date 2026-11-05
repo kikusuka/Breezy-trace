@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "breezy-trace"
+version = "0.1.0"
+description = "Local-first project memory and development intelligence for your terminal"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "platformdirs>=4.0",
+  "textual>=0.70",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.5"]
+
+[project.scripts]
+breezy-trace = "breezy_trace.cli:main"
+btrace = "breezy_trace.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

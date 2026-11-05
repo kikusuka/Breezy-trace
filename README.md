@@ -12,9 +12,13 @@ Breezy Trace is a local-first developer workspace from **Breezy Labs**. It bring
 - **Honest evidence:** detected facts, user notes, and inferred relationships are kept distinct.
 - **Safe by default:** the first release is read-only with respect to Git operations.
 
-## Status
+## Current foundation
 
-Early foundation work. Interfaces and storage are being built before deeper agent and code intelligence integrations.
+- Textual terminal application with a Breezy Blue visual foundation.
+- Global project dashboard and registered-project selector.
+- Git-root detection and local project registration.
+- SQLite schema for project notes, tasks, decisions, sessions, file events, commits, and remote snapshots.
+- Read-only Git working-tree inspection.
 
 ## Development
 
@@ -24,7 +28,20 @@ Requires Python 3.11+.
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
+breezy-trace register .
 breezy-trace
+```
+
+Run tests with `pytest`.
+
+## CLI
+
+```bash
+breezy-trace                 # Open the dashboard (or the registered current project)
+breezy-trace register .      # Register the current Git repository
+breezy-trace projects        # List registered projects
+breezy-trace unregister NAME # Remove a project from the registry
+breezy-trace home            # Open the global dashboard
 ```
 
 ## License
