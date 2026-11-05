@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 from breezy_trace import __version__
