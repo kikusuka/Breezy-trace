@@ -4,7 +4,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from breezy_trace import __version__\nfrom breezy_trace.backup import backup_database, restore_database\nfrom breezy_trace.config import database_path, data_dir
+from breezy_trace import __version__
+from breezy_trace.backup import backup_database, restore_database
+from breezy_trace.config import database_path, data_dir
 from breezy_trace.app import TraceApp
 from breezy_trace.git import inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
@@ -27,7 +29,14 @@ def build_parser() -> argparse.ArgumentParser:
     unregister.add_argument("project")
 
     commands.add_parser("projects", help="List registered projects.")
-    commands.add_parser("home", help="Open the global project dashboard.")\n\n    backup = commands.add_parser("backup", help="Create a portable backup of local project data.")\n    backup.add_argument("--output", type=Path, help="Backup file path (defaults to app data directory).")\n\n    restore = commands.add_parser("restore", help="Restore project data from a backup.")\n    restore.add_argument("backup", type=Path, help="Path to a Breezy Trace .sqlite3 backup.")\n    restore.add_argument("--yes", action="store_true", help="Confirm replacing the current local database.")
+    commands.add_parser("home", help="Open the global project dashboard.")
+
+    backup = commands.add_parser("backup", help="Create a portable backup of local project data.")
+    backup.add_argument("--output", type=Path, help="Backup file path (defaults to app data directory).")
+
+    restore = commands.add_parser("restore", help="Restore project data from a backup.")
+    restore.add_argument("backup", type=Path, help="Path to a Breezy Trace .sqlite3 backup.")
+    restore.add_argument("--yes", action="store_true", help="Confirm replacing the current local database.")
     commands.add_parser("status", help="Show read-only Git status for the current project.")
     commands.add_parser("inspect", help="Show detailed read-only Git changes, conflicts, and stashes.")
     commands.add_parser("resume", help="Show the context needed to resume the current project.")
