@@ -27,6 +27,7 @@ code = ["tree-sitter-language-pack>=1.24,<2"]
 
 [project.scripts]
 breezy-trace = "breezy_trace.cli:main"
+trace = "breezy_trace.cli:main"
 btrace = "breezy_trace.cli:main"
 
 [tool.setuptools.packages.find]
