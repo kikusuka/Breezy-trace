@@ -10,6 +10,7 @@ from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
 from breezy_trace.app import TraceApp
 from breezy_trace.backup import backup_database, restore_database
+from breezy_trace.call_graph import PythonCallGraph
 from breezy_trace.code_index import PythonCodeIndex
 from breezy_trace.config import data_dir, database_path
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
@@ -74,6 +75,9 @@ def build_parser() -> argparse.ArgumentParser:
     code_search = code_commands.add_parser("search", help="Search indexed symbol names across languages.")
     code_search.add_argument("query")
     code_search.add_argument("--limit", type=int, default=50)
+    calls = code_commands.add_parser("calls", help="Show syntactic Python call sites with explicit uncertainty.")
+    calls.add_argument("query", nargs="?", help="Filter by caller or callee name.")
+    calls.add_argument("--limit", type=int, default=100)
     code_commands.add_parser("languages", help="Show built-in and optional language support.")
     code_imports = code_commands.add_parser("imports", help="List indexed imports, optionally filtered by module.")
     code_imports.add_argument("query", nargs="?")
@@ -177,6 +181,13 @@ def main() -> None:
                             "Other languages not indexed. Install optional support with: "
                             "pip install 'breezy-trace[code]'"
                         )
+                elif args.code_command == "calls":
+                    records = PythonCallGraph().scan(project, query=args.query, limit=args.limit)
+                    if not records:
+                        print("No Python call sites found.")
+                    for item in records:
+                        print(f"{item['path']}:{item['line']}  {item['caller']} -> {item['callee']} [{item['resolution']}]")
+                    print("Note: call sites are syntactic observations; targets are not resolved.")
                 elif args.code_command == "languages":
                     print("Built-in: Python")
                     print("Optional Tree-sitter languages:")
