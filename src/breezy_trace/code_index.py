@@ -11,9 +11,9 @@ import os
 import subprocess
 import tokenize
 import uuid
+from contextlib import closing
 from pathlib import Path
 
-from contextlib import closing
 
 from breezy_trace.database import connect
 from breezy_trace.models import Project
