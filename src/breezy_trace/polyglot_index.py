@@ -70,6 +70,7 @@ def _git_paths(root: Path) -> list[str]:
         ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"],
         capture_output=True,
         check=False,
+        timeout=30,
         env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
     )
     if result.returncode:
