@@ -118,3 +118,21 @@ def test_scan_prunes_activity_events_older_than_90_days(tmp_path: Path) -> None:
             "SELECT COUNT(*) FROM file_events WHERE id = 'old-event'"
         ).fetchone()[0]
     assert remaining == 0
+
+
+
+def test_scan_sanitizes_git_error_terminal_controls(tmp_path: Path, monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    _root, project, db_path = make_project(tmp_path)
+    monkeypatch.setattr(
+        "breezy_trace.activity.subprocess.run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=128, stderr=b"\x1b[31munsafe git error\x1b[0m"
+        ),
+    )
+
+    with pytest.raises(RuntimeError) as error:
+        FileActivityStore(db_path).scan(project)
+
+    assert "\x1b" not in str(error.value)
