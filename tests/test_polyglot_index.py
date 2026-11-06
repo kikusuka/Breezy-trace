@@ -22,8 +22,9 @@ class Node:
         self.type = kind
         self.start_point = Point(start)
         self.end_point = Point(end)
-        self.start_byte = 0
-        self.end_byte = len(text)
+        self.start_byte = offset
+        self.end_byte = offset + len(text)
+        self.has_error = False
         self.named_children = children or []
         self.fields = fields or {}
 
