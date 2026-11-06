@@ -161,6 +161,21 @@ def _git_python_paths(root: Path) -> list[str]:
     return git_source_paths(root, {".py"})
 
 
+def read_source_file(root: Path, relative: str) -> bytes | None:
+    """Read one in-root source file without allowing growth past the size cap."""
+    path = root / relative
+    try:
+        if path.is_symlink() or not path.is_file():
+            return None
+        if not path.resolve().is_relative_to(root):
+            return None
+        with path.open("rb") as stream:
+            raw = stream.read(MAX_FILE_BYTES + 1)
+        return raw if len(raw) <= MAX_FILE_BYTES else None
+    except OSError:
+        return None
+
+
 class PythonCodeIndex:
     """Build and query an explicit, local-only Python symbol index."""
 
@@ -183,20 +198,8 @@ class PythonCodeIndex:
             indexed = unchanged = syntax_errors = skipped = 0
 
             for relative in candidates:
-                path = root / relative
-                try:
-                    if path.is_symlink() or not path.is_file():
-                        skipped += 1
-                        continue
-                    resolved = path.resolve()
-                    if not resolved.is_relative_to(root):
-                        skipped += 1
-                        continue
-                    if path.stat().st_size > MAX_FILE_BYTES:
-                        skipped += 1
-                        continue
-                    raw = path.read_bytes()
-                except OSError:
+                raw = read_source_file(root, relative)
+                if raw is None:
                     skipped += 1
                     continue
 
