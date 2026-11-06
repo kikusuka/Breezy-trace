@@ -23,7 +23,7 @@ from breezy_trace.git import branch_intelligence, inspect_details, inspect_statu
 from breezy_trace.journal import JournalStore
 from breezy_trace.models import Project
 from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS
-from breezy_trace.registry import ProjectRegistry
+from breezy_trace.registry import ProjectError, ProjectRegistry
 
 THEME_CSS = """
 Screen { layers: base overlay; background: #071426; color: #E1F2FF; }
