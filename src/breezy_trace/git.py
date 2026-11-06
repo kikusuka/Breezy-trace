@@ -1,5 +1,6 @@
 """Read-only Git inspection helpers with bounded subprocess execution."""
 
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -9,12 +10,17 @@ from breezy_trace.models import GitStatus
 GIT_TIMEOUT_SECONDS = 5
 
 
+def _clean_terminal_text(value: str) -> str:
+    """Replace terminal control characters while preserving line/tab layout."""
+    return re.sub(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]", "�", value)
+
+
 def _run(
     path: Path, *args: str, timeout: float = GIT_TIMEOUT_SECONDS
 ) -> subprocess.CompletedProcess[str] | None:
     """Run a read-only Git command and return None when Git is unavailable or slow."""
     try:
-        return subprocess.run(
+        result = subprocess.run(
             ["git", "-C", str(path), *args],
             capture_output=True,
             text=True,
@@ -23,19 +29,28 @@ def _run(
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return None
+    # Git metadata can contain terminal control characters (for example in
+    # commit subjects). Strip them before any caller renders the text.
+    result.stdout = _clean_terminal_text(result.stdout)
+    result.stderr = _clean_terminal_text(result.stderr)
+    return result
 
 
 def inspect_status(path: Path) -> GitStatus:
     """Read a concise Git status without changing repository state."""
-    command = _run(path, "status", "--short", "--branch", "--ahead-behind")
+    command = _run(
+        path, "status", "--porcelain=v1", "--branch", "--ahead-behind", "-z"
+    )
     if command is None:
         return GitStatus.unavailable("Git is unavailable or the status command timed out.")
     if command.returncode != 0:
         reason = command.stderr.strip() or "Git status is unavailable."
         return GitStatus.unavailable(reason)
 
-    lines = command.stdout.splitlines()
-    branch_line = lines[0] if lines else "## unknown"
+    # Porcelain -z uses NUL-delimited path records, so filenames containing
+    # newlines cannot be mistaken for additional changed files.
+    records = command.stdout.split("\0")
+    branch_line = records[0] if records else "## unknown"
     branch_info = branch_line.removeprefix("## ")
     if branch_info.startswith("No commits yet on "):
         branch = branch_info.removeprefix("No commits yet on ").strip()
@@ -43,8 +58,8 @@ def inspect_status(path: Path) -> GitStatus:
         branch = "detached HEAD"
     else:
         branch = branch_info.split("...", 1)[0].split(" ", 1)[0]
-    ahead = behind = staged = modified = untracked = 0
 
+    ahead = behind = staged = modified = untracked = 0
     if "[" in branch_line and "]" in branch_line:
         tracking = branch_line.split("[", 1)[1].split("]", 1)[0]
         for part in tracking.split(","):
@@ -57,8 +72,13 @@ def inspect_status(path: Path) -> GitStatus:
             except ValueError:
                 continue
 
-    for line in lines[1:]:
-        code = line[:2]
+    index = 1
+    while index < len(records):
+        record = records[index]
+        index += 1
+        if len(record) < 3:
+            continue
+        code = record[:2]
         if code == "??":
             untracked += 1
         else:
@@ -66,6 +86,9 @@ def inspect_status(path: Path) -> GitStatus:
                 staged += 1
             if code[1] not in {" ", "?"}:
                 modified += 1
+        if "R" in code or "C" in code:
+            # In -z mode rename/copy records are followed by the source path.
+            index += 1
 
     total = staged + modified + untracked
     summary = "Working tree clean" if total == 0 else (
@@ -81,7 +104,6 @@ def inspect_status(path: Path) -> GitStatus:
         clean=total == 0,
         summary=summary,
     )
-
 
 def recent_commits(path: Path, limit: int = 5) -> list[dict[str, str]]:
     """Return recent local commits without fetching or changing repository state."""
@@ -100,16 +122,22 @@ def recent_commits(path: Path, limit: int = 5) -> list[dict[str, str]]:
 
 def inspect_details(path: Path) -> dict[str, object]:
     """Return additional read-only Git signals for a project overview."""
-    status = _run(path, "status", "--porcelain=v1", "--untracked-files=all")
+    status = _run(path, "status", "--porcelain=v1", "-z", "--untracked-files=all")
     if status is None or status.returncode != 0:
         return {
             "available": False, "conflicts": 0, "stashes": 0,
             "staged_diff": "", "unstaged_diff": "",
         }
-    conflicts = sum(
-        1 for line in status.stdout.splitlines()
-        if len(line) >= 2 and ("U" in line[:2] or line[:2] in {"AA", "DD"})
-    )
+    records = status.stdout.split("\0")
+    conflicts = 0
+    index = 0
+    while index < len(records):
+        record = records[index]
+        index += 1
+        if len(record) >= 2 and ("U" in record[:2] or record[:2] in {"AA", "DD"}):
+            conflicts += 1
+        if len(record) >= 2 and ("R" in record[:2] or "C" in record[:2]):
+            index += 1
     stash = _run(path, "stash", "list")
     staged = _run(path, "diff", "--cached", "--stat")
     unstaged = _run(path, "diff", "--stat")

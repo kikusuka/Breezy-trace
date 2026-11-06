@@ -1,9 +1,11 @@
 import subprocess
+from contextlib import closing
 from pathlib import Path
 
 import pytest
 
 from breezy_trace.activity import FileActivityStore, _parse_porcelain
+from breezy_trace.database import connect
 from breezy_trace.registry import ProjectRegistry
 
 
@@ -94,3 +96,43 @@ def test_scan_rejects_unregistered_project(tmp_path: Path) -> None:
     ProjectRegistry(db_path).unregister(project.path)
     with pytest.raises(ValueError, match="not registered"):
         FileActivityStore(db_path).scan(project)
+
+
+
+def test_scan_prunes_activity_events_older_than_90_days(tmp_path: Path) -> None:
+    _root, project, db_path = make_project(tmp_path)
+    with closing(connect(db_path)) as connection, connection:
+        connection.execute(
+            """
+            INSERT INTO file_events
+            (id, project_id, session_id, path, event_type, observed_at, evidence)
+            VALUES ('old-event', ?, NULL, 'old.txt', 'modified', '2000-01-01T00:00:00+00:00', 'test')
+            """,
+            (project.id,),
+        )
+
+    FileActivityStore(db_path).scan(project)
+
+    with closing(connect(db_path)) as connection, connection:
+        remaining = connection.execute(
+            "SELECT COUNT(*) FROM file_events WHERE id = 'old-event'"
+        ).fetchone()[0]
+    assert remaining == 0
+
+
+
+def test_scan_sanitizes_git_error_terminal_controls(tmp_path: Path, monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    _root, project, db_path = make_project(tmp_path)
+    monkeypatch.setattr(
+        "breezy_trace.activity.subprocess.run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=128, stderr=b"\x1b[31munsafe git error\x1b[0m"
+        ),
+    )
+
+    with pytest.raises(RuntimeError) as error:
+        FileActivityStore(db_path).scan(project)
+
+    assert "\x1b" not in str(error.value)

@@ -100,3 +100,33 @@ def test_agent_metadata_rejects_oversized_json_and_invalid_timestamps(tmp_path: 
     assert _read_json(oversized) is None
     assert _iso(float("inf")) is None
     assert _iso(10**100) is None
+
+
+def test_agent_metadata_path_limit_is_deterministic(tmp_path: Path, monkeypatch) -> None:
+    import breezy_trace.agents as agents_module
+
+    paths = [tmp_path / name for name in ("z.json", "a.json", "m.json")]
+    monkeypatch.setattr(agents_module, "MAX_DISCOVERY_FILES", 2)
+
+    first = agents_module._bounded_metadata_paths(iter(paths))
+    second = agents_module._bounded_metadata_paths(iter(reversed(paths)))
+
+    assert first == second == [tmp_path / "a.json", tmp_path / "m.json"]
+
+
+def test_agent_metadata_reader_rejects_symlinks_and_deep_json(tmp_path: Path) -> None:
+    from breezy_trace.agents import _read_json
+
+    target = tmp_path / "target.json"
+    target.write_text('{"safe": true}', encoding="utf-8")
+    link = tmp_path / "link.json"
+    try:
+        link.symlink_to(target)
+    except OSError:
+        pass
+    else:
+        assert _read_json(link) is None
+
+    deeply_nested = tmp_path / "nested.json"
+    deeply_nested.write_text("[" * 2_000 + "0" + "]" * 2_000, encoding="utf-8")
+    assert _read_json(deeply_nested) is None

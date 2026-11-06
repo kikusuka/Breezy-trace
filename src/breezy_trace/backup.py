@@ -14,6 +14,18 @@ def _readonly_uri(path: Path) -> str:
     return f"{path.as_uri()}?mode=ro"
 
 
+def _reject_live_database_sidecars(destination: Path) -> None:
+    """Avoid replacing a database while SQLite WAL sidecars may be in use."""
+    sidecars = [Path(f"{destination}-wal"), Path(f"{destination}-shm")]
+    present = [path.name for path in sidecars if path.exists()]
+    if present:
+        names = ", ".join(present)
+        raise RuntimeError(
+            f"Cannot restore while SQLite sidecars exist ({names}). "
+            "Close every Breezy Trace process using this database and retry."
+        )
+
+
 def backup_database(source: Path, destination: Path) -> Path:
     """Create a consistent SQLite backup, including committed WAL contents."""
     source = source.expanduser().resolve()
@@ -52,6 +64,7 @@ def restore_database(backup: Path, destination: Path) -> Path:
     destination = destination.expanduser().resolve()
     if backup == destination:
         raise ValueError("Backup source and live database destination must differ.")
+    _reject_live_database_sidecars(destination)
     if not backup.is_file():
         raise FileNotFoundError(f"Backup file does not exist: {backup}")
     with closing(sqlite3.connect(_readonly_uri(backup), uri=True)) as source:

@@ -10,7 +10,7 @@ import os
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from itertools import islice
+from heapq import nsmallest
 from pathlib import Path
 
 from breezy_trace.database import connect
@@ -46,13 +46,23 @@ def _iso(value: object) -> str | None:
 
 
 def _read_json(path: Path) -> dict[str, object] | None:
+    """Read a bounded metadata document without trusting a prior size check."""
     try:
-        if path.stat().st_size > MAX_METADATA_BYTES:
+        if path.is_symlink():
             return None
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
+        with path.open("rb") as stream:
+            raw = stream.read(MAX_METADATA_BYTES + 1)
+        if len(raw) > MAX_METADATA_BYTES:
+            return None
+        value = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError):
         return None
     return value if isinstance(value, dict) else None
+
+
+def _bounded_metadata_paths(paths) -> list[Path]:
+    """Select a deterministic, memory-bounded subset of metadata paths."""
+    return nsmallest(MAX_DISCOVERY_FILES, paths, key=lambda path: path.as_posix())
 
 
 def _project_matches(value: object, project_path: Path) -> bool:
@@ -91,7 +101,7 @@ def discover_claude_sessions(project_path: Path, claude_home: Path | None = None
     if not root.is_dir():
         return []
     found: list[AgentSession] = []
-    for index_path in islice(root.glob("*/sessions-index.json"), MAX_DISCOVERY_FILES):
+    for index_path in _bounded_metadata_paths(root.glob("*/sessions-index.json")):
         index = _read_json(index_path)
         if not index:
             continue
@@ -131,7 +141,7 @@ def discover_opencode_sessions(
     for root in roots if roots is not None else _opencode_roots():
         if not root.is_dir():
             continue
-        for session_path in islice(root.glob("*/*.json"), MAX_DISCOVERY_FILES):
+        for session_path in _bounded_metadata_paths(root.glob("*/*.json")):
             session = _read_json(session_path)
             if not session or not _project_matches(session.get("directory"), project_path):
                 continue

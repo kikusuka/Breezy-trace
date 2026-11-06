@@ -8,7 +8,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from breezy_trace.code_index import MAX_FILE_BYTES, _git_python_paths
+from breezy_trace.code_index import _git_python_paths, read_source_file
 from breezy_trace.models import Project
 
 
@@ -69,14 +69,12 @@ class PythonCallGraph:
         results: list[dict[str, object]] = []
 
         for relative in _git_python_paths(root):
-            path = root / relative
+            raw = read_source_file(root, relative)
+            if raw is None:
+                continue
             try:
-                if path.is_symlink() or not path.is_file():
-                    continue
-                if not path.resolve().is_relative_to(root) or path.stat().st_size > MAX_FILE_BYTES:
-                    continue
-                tree = ast.parse(path.read_bytes(), filename=relative)
-            except (OSError, SyntaxError, UnicodeDecodeError):
+                tree = ast.parse(raw, filename=relative)
+            except (SyntaxError, UnicodeDecodeError):
                 continue
 
             visitor = _CallVisitor()
