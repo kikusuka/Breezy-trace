@@ -56,11 +56,11 @@ Header {
     align: center middle;
 }
 #nav Button {
-    min-width: 4;
+    min-width: 3;
     width: 1fr;
     height: 2;
-    margin: 0 1;
-    padding: 0 1;
+    margin: 0;
+    padding: 0;
     border: none;
     background: #1E293B;
     color: #BAE6FD;
