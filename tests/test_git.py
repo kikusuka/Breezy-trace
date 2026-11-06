@@ -131,7 +131,7 @@ def test_git_status_parses_nul_records_without_creating_newline_filename(
         lambda *_args, **_kwargs: CompletedProcess(
             args=["git"],
             returncode=0,
-            stdout="## main\\0?? line\\nbreak.txt\\0",
+            stdout="## main\0?? line\nbreak.txt\0",
             stderr="",
         ),
     )
@@ -146,4 +146,4 @@ def test_git_status_parses_nul_records_without_creating_newline_filename(
 def test_terminal_sanitizer_preserves_git_protocol_delimiters() -> None:
     from breezy_trace.git import _clean_terminal_text
 
-    assert _clean_terminal_text("branch\\0sha\\x1fsubject") == "branch\\0sha\\x1fsubject"
+    assert _clean_terminal_text("branch\0sha\x1fsubject") == "branch\0sha\x1fsubject"
