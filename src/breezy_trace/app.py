@@ -12,7 +12,8 @@ from typing import ClassVar
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Button, DataTable, Footer, Header, Static
+from textual.screen import ModalScreen
+from textual.widgets import Button, DataTable, DirectoryTree, Footer, Header, Input, Static
 
 from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
@@ -57,6 +58,44 @@ SCREEN_NAMES = {
     "7": ("code", "CODE"),
     "8": ("settings", "SETTINGS"),
 }
+
+
+class ProjectPicker(ModalScreen[Path | None]):
+    """Terminal-native folder picker for opening a Git project."""
+
+    CSS = """
+    ProjectPicker { align: center middle; background: #071426 80%; }
+    #picker-dialog { width: 86%; height: 86%; border: round #83CCFF; background: #0B1E35; padding: 1 2; }
+    #picker-title { color: #83CCFF; text-style: bold; height: auto; }
+    #folder-path { margin: 1 0; }
+    #directory-tree { height: 1fr; border: round #234467; }
+    #picker-actions { height: 3; align: right middle; }
+    #picker-actions Button { margin-left: 1; }
+    """
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="picker-dialog"):
+            yield Static("OPEN A PROJECT FOLDER", id="picker-title")
+            yield Input(value=str(Path.home()), placeholder="Enter any folder path", id="folder-path")
+            yield DirectoryTree(str(Path.home()), id="directory-tree")
+            with Horizontal(id="picker-actions"):
+                yield Button("Open path", id="open-path", variant="primary")
+                yield Button("Use selected folder", id="open-selected")
+                yield Button("Cancel", id="cancel-picker")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "cancel-picker":
+            self.dismiss(None)
+            return
+        if event.button.id == "open-path":
+            value = self.query_one("#folder-path", Input).value.strip()
+            if value:
+                self.dismiss(Path(value).expanduser())
+            return
+        if event.button.id == "open-selected":
+            node = self.query_one("#directory-tree", DirectoryTree).cursor_node
+            if node is not None and node.data is not None:
+                self.dismiss(Path(node.data.path))
 
 
 class TraceApp(App[None]):
@@ -111,6 +150,8 @@ class TraceApp(App[None]):
                 yield DataTable(id="project-table", cursor_type="row")
             with Vertical(id="content-panel"):
                 yield Static("HOME", id="view-title", markup=False)
+                with Horizontal(id="home-actions"):
+                    yield Button("Open Project", id="open-project", variant="primary")
                 yield Static(id="content", markup=False)
         yield Static(
             "1–8 NAVIGATE  ·  CTRL+P PROJECTS  ·  Q QUIT",
@@ -243,6 +284,25 @@ class TraceApp(App[None]):
         view = view_by_button.get(event.button.id or "")
         if view:
             self._navigate(view)
+        elif event.button.id == "open-project":
+            self.push_screen(ProjectPicker(), self._handle_project_pick)
+
+    def _handle_project_pick(self, selected_path: Path | None) -> None:
+        if selected_path is None:
+            return
+        try:
+            project = self.registry.find_by_path(selected_path)
+            if project is None:
+                project = self.registry.register(selected_path)
+                self.query_one("#project-table", DataTable).add_row(
+                    project.name, "select to inspect", key=project.id
+                )
+        except (OSError, ProjectError, ValueError) as error:
+            self.notify(str(error), title="Could not open project", severity="error")
+            return
+        self.active_project = project
+        self.registry.mark_opened(project.id)
+        self._render_view("overview")
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.row_key is None:
@@ -259,6 +319,7 @@ class TraceApp(App[None]):
     def _render(self, title: str, body: str) -> None:
         self.current_view = title.lower()
         self.query_one("#view-title", Static).update(title.upper())
+        self.query_one("#home-actions").display = self.current_view == "home"
         self.query_one("#content", Static).update(body)
         for button in self.query("#nav Button"):
             button.remove_class("active")
@@ -272,8 +333,8 @@ class TraceApp(App[None]):
                     "WELCOME TO BREEZY TRACE\n\n"
                     "Your registered projects will appear in the list.\n\n"
                     "GET STARTED\n"
-                    "From a Git repository, run: breezy-trace register .\n"
-                    "Then launch breezy-trace from that repository.\n\n"
+                    "Use Open Project to browse to any Git repository.\n"
+                    "Trace registers it and opens its workspace.\n\n"
                     "WHAT'S INSIDE\n"
                     "Project overview  ·  Git status, diffs and recent commits\n"
                     "Journal           ·  Notes, tasks and decisions\n"
@@ -290,7 +351,7 @@ class TraceApp(App[None]):
                 body = (
                     "YOUR DEVELOPMENT WORKSPACE\n\n"
                     f"{len(projects)} registered project(s).\n\n"
-                    "Select a project from the left to open its overview.\n\n"
+                    "Select a project from the left, or use Open Project to add another repository.\n\n"
                     "FEATURE DIRECTORY\n"
                     "Project overview     Git status, diffs, conflicts, stashes, commits\n"
                     "Journal              Notes, open/completed tasks, decisions\n"
