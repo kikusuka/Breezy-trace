@@ -116,3 +116,32 @@ def test_terminal_text_replaces_control_characters() -> None:
     assert "\x07" not in cleaned
     assert "safe" in cleaned and "red" in cleaned
     assert "\nnext" in cleaned
+
+
+def test_git_status_parses_nul_records_without_creating_newline_filename(monkeypatch, tmp_path: Path) -> None:
+    from subprocess import CompletedProcess
+
+    import breezy_trace.git as git_module
+
+    monkeypatch.setattr(
+        git_module,
+        "_run",
+        lambda *_args, **_kwargs: CompletedProcess(
+            args=["git"],
+            returncode=0,
+            stdout="## main\\0?? line\\nbreak.txt\\0",
+            stderr="",
+        ),
+    )
+
+    status = inspect_status(tmp_path)
+
+    assert status.branch == "main"
+    assert status.untracked == 1
+    assert status.clean is False
+
+
+def test_terminal_sanitizer_preserves_git_protocol_delimiters() -> None:
+    from breezy_trace.git import _clean_terminal_text
+
+    assert _clean_terminal_text("branch\\0sha\\x1fsubject") == "branch\\0sha\\x1fsubject"
