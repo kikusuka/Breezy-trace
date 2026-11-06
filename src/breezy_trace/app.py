@@ -15,7 +15,7 @@ from breezy_trace.registry import ProjectRegistry
 
 THEME_CSS = """
 Screen {
-    layers: base, overlay;
+    layers: base overlay;
     background: #0F172A;
     color: #E2E8F0;
 }
@@ -94,7 +94,8 @@ class TraceApp(App[None]):
         Binding("q", "quit", "Quit"),
         Binding("ctrl+p", "focus_projects", "Projects"),
         Binding("ctrl+h", "home", "Home"),
-        Binding("escape", "skip_intro", "Skip intro", show=False),
+        Binding("space", "skip_intro", "Skip intro", show=False),
+        Binding("escape", "home", "Back"),
     ]
 
     def __init__(self, project: Project | None = None) -> None:
