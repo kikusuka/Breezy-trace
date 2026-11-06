@@ -71,7 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
     code = commands.add_parser("code", help="Index and search source symbols and imports.")
     code_commands = code.add_subparsers(dest="code_command", required=True)
     code_commands.add_parser("index", help="Explicitly index supported languages from Git-listed files.")
-    code_search = code_commands.add_parser("search", help="Search indexed Python symbol names.")
+    code_search = code_commands.add_parser("search", help="Search indexed symbol names across languages.")
     code_search.add_argument("query")
     code_search.add_argument("--limit", type=int, default=50)
     code_commands.add_parser("languages", help="Show built-in and optional language support.")
@@ -200,7 +200,10 @@ def main() -> None:
                     if not results:
                         print("No matching imports. Run: breezy-trace code index")
                     for item in results:
-                        print(f"{item['path']}:{item['line']}  {item['module']}")
+                        print(
+                            f"{item['path']}:{item['line']}  "
+                            f"{item['module']} [{item.get('language', 'python')}]"
+                        )
                 return
             if args.command == "activity":
                 activity_store = FileActivityStore(registry.db_path)
