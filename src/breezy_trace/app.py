@@ -61,7 +61,38 @@ Header {
 }
 #project-list {
     width: 34%;
-    min-width: 25;
+    min-width: 18;
+    height: 1fr;
+}
+
+@media (max-width: 80) {
+    #workspace {
+        layout: vertical;
+    }
+    #project-list {
+        width: 100%;
+        height: 12;
+        min-height: 7;
+    }
+    #content-panel {
+        width: 100%;
+        margin-left: 0;
+        min-height: 12;
+    }
+}
+
+@media (max-width: 52) {
+    #hero {
+        padding: 0 1;
+    }
+    #nav {
+        height: auto;
+        min-height: 3;
+        content-align: left middle;
+    }
+    #content-panel {
+        padding: 1;
+    }
 }
 #project-table {
     height: 1fr;
@@ -187,11 +218,9 @@ class TraceApp(App[None]):
         table.add_columns("PROJECT", "BRANCH")
         projects = self.registry.list_projects()
         for item in projects:
-            try:
-                branch = inspect_status(Path(item.path)).branch
-            except (OSError, RuntimeError):
-                branch = "unavailable"
-            table.add_row(item.name, branch, key=item.id)
+            # Avoid spawning one Git process per registered project during startup.
+            # Branch details are loaded only after the user opens a project.
+            table.add_row(item.name, "select to inspect", key=item.id)
         if self.active_project:
             self.registry.mark_opened(self.active_project.id)
             self._render_view("overview")
