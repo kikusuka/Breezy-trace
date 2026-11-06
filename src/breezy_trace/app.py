@@ -1,4 +1,9 @@
-"""Textual terminal interface for Breezy Trace."""
+"""Textual terminal workspace for Breezy Trace.
+
+The interface is deliberately read-only with respect to Git. Journal and index
+operations are explicit, local actions; no background watcher or network call
+is started by opening the application.
+"""
 
 from pathlib import Path
 from typing import ClassVar
@@ -8,9 +13,14 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import DataTable, Footer, Header, Static
 
-from breezy_trace.git import branch_intelligence, inspect_status
+from breezy_trace.activity import FileActivityStore
+from breezy_trace.agents import AgentSessionStore
+from breezy_trace.config import database_path
+from breezy_trace.database import connect
+from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
 from breezy_trace.models import Project
+from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS
 from breezy_trace.registry import ProjectRegistry
 
 THEME_CSS = """
@@ -18,6 +28,10 @@ Screen {
     layers: base overlay;
     background: #0F172A;
     color: #E2E8F0;
+}
+Header {
+    background: #111F35;
+    color: #BAE6FD;
 }
 #hero {
     height: auto;
@@ -30,33 +44,48 @@ Screen {
     color: #BAE6FD;
     text-style: bold;
 }
-#subtitle {
+#subtitle, #footer-note {
     color: #94A3B8;
+}
+#nav {
+    height: 3;
+    margin: 1 1 0 1;
+    padding: 0 1;
+    border: round #334155;
+    color: #7DD3FC;
+    content-align: center middle;
 }
 #workspace {
     height: 1fr;
     margin: 1 1 0 1;
 }
+#project-list {
+    width: 34%;
+    min-width: 25;
+}
 #project-table {
     height: 1fr;
     border: round #334155;
 }
-#side-panel {
-    width: 34;
-    min-width: 28;
+#content-panel {
+    width: 1fr;
     border: round #334155;
     padding: 1 2;
     margin-left: 1;
 }
-.section-title {
+#content-title {
     color: #38BDF8;
     text-style: bold;
+    height: auto;
     margin-bottom: 1;
+}
+#content {
+    height: 1fr;
+    overflow-y: auto;
 }
 #footer-note {
     height: auto;
     padding: 0 2 1 2;
-    color: #94A3B8;
 }
 #intro {
     layer: overlay;
@@ -64,7 +93,6 @@ Screen {
     height: 100%;
     align: center middle;
     background: #0F172A;
-    opacity: 1;
 }
 #intro-copy {
     width: 100%;
@@ -83,9 +111,20 @@ Screen {
 }
 """
 
+SCREEN_NAMES = {
+    "1": ("home", "HOME"),
+    "2": ("overview", "OVERVIEW"),
+    "3": ("journal", "JOURNAL"),
+    "4": ("agents", "AGENTS"),
+    "5": ("git", "GIT"),
+    "6": ("activity", "ACTIVITY"),
+    "7": ("code", "CODE"),
+    "8": ("settings", "SETTINGS"),
+}
+
 
 class TraceApp(App[None]):
-    """Global project dashboard and project overview."""
+    """Global project switcher and project intelligence workspace."""
 
     TITLE = "Breezy Trace"
     SUB_TITLE = "by Breezy Labs"
@@ -93,62 +132,71 @@ class TraceApp(App[None]):
     BINDINGS: ClassVar[list[Binding]] = [
         Binding("q", "quit", "Quit"),
         Binding("ctrl+p", "focus_projects", "Projects"),
-        Binding("ctrl+h", "home", "Home"),
+        Binding("ctrl+h", "show_home", "Home"),
+        Binding("1", "show_home", "Home", show=False),
+        Binding("2", "show_overview", "Overview", show=False),
+        Binding("3", "show_journal", "Journal", show=False),
+        Binding("4", "show_agents", "Agents", show=False),
+        Binding("5", "show_git", "Git", show=False),
+        Binding("6", "show_activity", "Activity", show=False),
+        Binding("7", "show_code", "Code", show=False),
+        Binding("8", "show_settings", "Settings", show=False),
         Binding("space", "skip_intro", "Skip intro", show=False),
-        Binding("escape", "home", "Back"),
+        Binding("escape", "show_home", "Back", show=False),
     ]
 
     def __init__(self, project: Project | None = None) -> None:
         super().__init__()
         self.registry = ProjectRegistry()
         self.active_project = project
+        self.current_view = "home"
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         with Container(id="hero"):
-            yield Static("BREEZY TRACE", id="brand")
+            yield Static("BREEZY TRACE", id="brand", markup=False)
             yield Static(
                 "A clear trail through your projects, code, and development history.",
                 id="subtitle",
+                markup=False,
             )
+        yield Static(
+            "1 HOME    2 OVERVIEW    3 JOURNAL    4 AGENTS    5 GIT    6 ACTIVITY    7 CODE    8 SETTINGS",
+            id="nav",
+            markup=False,
+        )
         with Horizontal(id="workspace"):
-            with Vertical():
-                yield Static("REGISTERED PROJECTS", classes="section-title")
+            with Vertical(id="project-list"):
+                yield Static("YOUR PROJECTS", id="content-title", markup=False)
                 yield DataTable(id="project-table", cursor_type="row")
-            with Vertical(id="side-panel"):
-                yield Static("WORKSPACE", classes="section-title")
-                yield Static(id="project-detail")
-                yield Static("SHORTCUTS", classes="section-title")
-                yield Static(
-                    "[bold]Enter[/bold]  Open selected project\n"
-                    "[bold]Ctrl+P[/bold]  Focus project list\n"
-                    "[bold]Ctrl+H[/bold]  Global home\n"
-                    "[bold]Q[/bold]  Quit"
-                )
-        yield Static("LOCAL-FIRST  •  GIT-NATIVE  •  NO AI REQUIRED", id="footer-note")
+            with Vertical(id="content-panel"):
+                yield Static("HOME", id="view-title", markup=False)
+                yield Static(id="content", markup=False)
+        yield Static(
+            "LOCAL-FIRST  ·  GIT-NATIVE  ·  NO AI REQUIRED  ·  NO TELEMETRY",
+            id="footer-note",
+            markup=False,
+        )
         yield Footer()
         with Container(id="intro"):
-            yield Static("BREEZY TRACE", id="intro-copy")
-            yield Static("", id="intro-kicker")
+            yield Static("BREEZY TRACE", id="intro-copy", markup=False)
+            yield Static("", id="intro-kicker", markup=False)
 
     def on_mount(self) -> None:
         table = self.query_one("#project-table", DataTable)
-        table.add_columns("PROJECT", "PATH", "LAST OPENED")
-        for project in self.registry.list_projects():
-            table.add_row(
-                project.name,
-                project.path,
-                project.last_opened_at or "Not opened yet",
-                key=project.id,
-            )
+        table.add_columns("PROJECT", "BRANCH")
+        projects = self.registry.list_projects()
+        for item in projects:
+            try:
+                branch = inspect_status(Path(item.path)).branch
+            except (OSError, RuntimeError):
+                branch = "unavailable"
+            table.add_row(item.name, branch, key=item.id)
         if self.active_project:
             self.registry.mark_opened(self.active_project.id)
-            self.show_project(self.active_project)
+            self._render_view("overview")
         else:
-            self.query_one("#project-detail", Static).update(
-                "Choose a registered project to inspect its current state.\n\n"
-                f"[bold]{len(self.registry.list_projects())}[/bold] projects registered."
-            )
+            self._render_view("home")
         self._show_intro_brand()
         self.set_timer(0.62, self._show_intro_quote)
 
@@ -182,8 +230,7 @@ class TraceApp(App[None]):
         self.set_timer(0.82, self._finish_intro)
 
     def _finish_intro(self) -> None:
-        intro = self.query_one("#intro")
-        intro.styles.animate("opacity", 0.0, duration=0.24)
+        self.query_one("#intro").styles.animate("opacity", 0.0, duration=0.24)
         self.set_timer(0.27, self._hide_intro)
 
     def _hide_intro(self) -> None:
@@ -196,54 +243,271 @@ class TraceApp(App[None]):
         if event.row_key is None:
             return
         project_id = str(event.row_key.value)
-        project = next(
+        self.active_project = next(
             (item for item in self.registry.list_projects() if item.id == project_id),
             None,
         )
-        if project:
-            self.registry.mark_opened(project.id)
-            self.active_project = project
-            self.show_project(project)
+        if self.active_project:
+            self.registry.mark_opened(self.active_project.id)
+            self._render_view("overview")
 
-    def show_project(self, project: Project) -> None:
+    def _render(self, title: str, body: str) -> None:
+        self.current_view = title.lower()
+        self.query_one("#view-title", Static).update(title.upper())
+        self.query_one("#content", Static).update(body)
+
+    def _render_view(self, view: str) -> None:
+        if view == "home":
+            projects = self.registry.list_projects()
+            if not projects:
+                body = (
+                    "WELCOME TO BREEZY TRACE\n\n"
+                    "Your registered projects will appear in the list.\n\n"
+                    "From a Git repository, run:\n"
+                    "  breezy-trace register .\n\n"
+                    "Then launch breezy-trace to return here."
+                )
+            else:
+                body = (
+                    "YOUR DEVELOPMENT WORKSPACE\n\n"
+                    f"{len(projects)} registered project(s).\n\n"
+                    "Select a project from the left to open its overview.\n\n"
+                    "WHAT YOU CAN EXPLORE\n"
+                    "Project overview     Git state and recent commits\n"
+                    "Journal              Notes, tasks and decisions\n"
+                    "Agent sessions       Local Claude Code and OpenCode metadata\n"
+                    "Git intelligence     Branches, divergence and stashes\n"
+                    "File activity        Explicit snapshots of changed paths\n"
+                    "Code intelligence    Indexed symbols and imports\n\n"
+                    "Use number keys 1–8 to navigate."
+                )
+            self._render("Home", body)
+            return
+
+        project = self.active_project
+        if project is None:
+            self._render(
+                view,
+                "NO PROJECT SELECTED\n\nSelect a registered project from the list on the left.\n"
+                "Only explicitly registered repositories are shown.",
+            )
+            return
+
+        renderers = {
+            "overview": self._overview,
+            "journal": self._journal,
+            "agents": self._agents,
+            "git": self._git,
+            "activity": self._activity,
+            "code": self._code,
+            "settings": self._settings,
+        }
+        renderer = renderers.get(view)
+        self._render(view, renderer(project) if renderer else "Unknown workspace view.")
+
+    def _overview(self, project: Project) -> str:
         status = inspect_status(Path(project.path))
-        git_details = branch_intelligence(Path(project.path))
-        journal = JournalStore(self.registry.db_path)
-        entries = journal.list_entries(project, limit=3)
-        tasks = journal.list_tasks(project, status="open")
-        decisions = journal.list_decisions(project, limit=2)
-        recent_notes = "\n".join(
-            f"• {entry['title']}" for entry in entries
-        ) or "No notes yet — use: breezy-trace note TITLE"
-        open_tasks = "\n".join(
-            f"• {task['title']}" for task in tasks[:5]
-        ) or "No open tasks"
-        recent_decisions = "\n".join(
-            f"• {item['title']}: {item['decision']}" for item in decisions
-        ) or "No decisions recorded"
-        detail = (
-            f"[bold #BAE6FD]{project.name}[/bold #BAE6FD]\n"
-            f"[dim]{project.path}[/dim]\n\n"
-            f"[bold]Branch[/bold]\n{status.branch}\n\n"
-            f"[bold]Git state[/bold]\n{status.summary}\n"
-            f"Ahead: {status.ahead}  Behind: {status.behind}\n"
-            f"Upstream: {git_details['upstream'] or 'not configured'}\n"
-            f"Local branches: {len(git_details['local_branches'])}  Cached remote branches: {len(git_details['remote_branches'])}\n"
-            f"Unpushed commits: {len(git_details['unpushed_commits'])}  Upstream-only: {len(git_details['upstream_only_commits'])}\n\n"
-            f"[bold #38BDF8]RECENT NOTES[/bold #38BDF8]\n{recent_notes}\n\n"
-            f"[bold #38BDF8]OPEN TASKS ({len(tasks)})[/bold #38BDF8]\n{open_tasks}\n\n"
-            f"[bold #38BDF8]RECENT DECISIONS[/bold #38BDF8]\n{recent_decisions}\n\n"
-            "[dim]Add context with: breezy-trace note, task, or decision.[/dim]"
+        details = inspect_details(Path(project.path))
+        commits = recent_commits(Path(project.path), limit=5)
+        lines = [
+            project.name,
+            project.path,
+            "",
+            "WORKING TREE",
+            status.summary,
+            f"Branch: {status.branch}",
+            f"Staged: {status.staged}    Modified: {status.modified}    Untracked: {status.untracked}",
+            f"Ahead: {status.ahead}    Behind: {status.behind}",
+            f"Conflicts: {details['conflicts']}    Stashes: {details['stashes']}",
+            "",
+            "RECENT LOCAL COMMITS",
+        ]
+        lines.extend(
+            f"{item['sha']}  {item['date']}  {item['subject']}" for item in commits
         )
-        self.query_one("#project-detail", Static).update(detail)
+        if not commits:
+            lines.append("No local commits found.")
+        lines.extend(["", "RESUME YOUR WORK", "Use the Journal screen to record what you did, why, and what comes next."])
+        return "\n".join(lines)
+
+    def _journal(self, project: Project) -> str:
+        store = JournalStore(self.registry.db_path)
+        notes = store.list_entries(project, limit=12)
+        tasks = store.list_tasks(project)
+        decisions = store.list_decisions(project, limit=8)
+        lines = [
+            "PROJECT JOURNAL",
+            "Capture context explicitly with the CLI. Nothing here is inferred.",
+            "",
+            f"NOTES ({len(notes)})",
+        ]
+        lines.extend(
+            f"• {row['title']}  [{row['created_at'][:10]}]" for row in notes
+        )
+        if not notes:
+            lines.append("No notes recorded. Try: breezy-trace note \"Next session\" --body \"...\"")
+        lines.extend(["", f"OPEN TASKS ({sum(row['status'] == 'open' for row in tasks)})"])
+        lines.extend(f"□ {row['title']}" for row in tasks if row["status"] == "open")
+        if not any(row["status"] == "open" for row in tasks):
+            lines.append("No open tasks.")
+        lines.extend(["", "RECENT DECISIONS"])
+        lines.extend(f"• {row['title']}: {row['decision']}" for row in decisions)
+        if not decisions:
+            lines.append("No decisions recorded.")
+        lines.extend(["", "CLI: note TITLE · task TITLE · decision TITLE DECISION · tasks · done TASK_ID"])
+        return "\n".join(lines)
+
+    def _agents(self, project: Project) -> str:
+        sessions = AgentSessionStore(self.registry.db_path).list_sessions(project, limit=20)
+        lines = [
+            "AGENT SESSION HISTORY",
+            "Metadata only. Breezy Trace does not read prompts or transcripts.",
+            "",
+        ]
+        for item in sessions:
+            when = item["ended_at"] or item["started_at"] or "time unavailable"
+            lines.append(f"{item['provider']}  ·  {when}")
+            lines.append(f"  Session: {item['external_id']}")
+            metadata = item["metadata"]
+            if metadata:
+                lines.append(f"  Metadata: {metadata}")
+        if not sessions:
+            lines.append("No sessions indexed yet.")
+            lines.append("Run: breezy-trace sessions --sync")
+        lines.extend(["", "Supported discovery: Claude Code and OpenCode."])
+        return "\n".join(lines)
+
+    def _git(self, project: Project) -> str:
+        data = branch_intelligence(Path(project.path))
+        status = inspect_status(Path(project.path))
+        lines = [
+            "GIT INTELLIGENCE · READ ONLY",
+            f"Current branch: {status.branch}",
+            f"Upstream: {data['upstream'] or 'not configured'}",
+            f"Ahead: {data['ahead'] if data['ahead'] is not None else 'unknown'} | Behind: {data['behind'] if data['behind'] is not None else 'unknown'}",
+            "Remote branch data is cached locally; no fetch is performed.",
+            "",
+            f"LOCAL BRANCHES ({len(data['local_branches'])})",
+        ]
+        lines.extend(f"• {item['name']}  {item['sha']}" for item in data["local_branches"])
+        lines.extend(["", f"CACHED REMOTE BRANCHES ({len(data['remote_branches'])})"])
+        lines.extend(f"• {item['name']}  {item['sha']}" for item in data["remote_branches"])
+        lines.extend(["", f"UNPUSHED COMMITS ({len(data['unpushed_commits'])})"])
+        lines.extend(f"• {item['sha']}  {item['subject']}" for item in data["unpushed_commits"])
+        lines.extend(["", f"UPSTREAM-ONLY COMMITS ({len(data['upstream_only_commits'])})"])
+        lines.extend(f"• {item['sha']}  {item['subject']}" for item in data["upstream_only_commits"])
+        lines.extend(["", f"STASHES ({len(data['stashes'])})"])
+        lines.extend(f"• {item['ref']}  {item['subject']}" for item in data["stashes"])
+        return "\n".join(lines)
+
+    def _activity(self, project: Project) -> str:
+        events = FileActivityStore(self.registry.db_path).list_events(project, limit=40)
+        lines = [
+            "FILE ACTIVITY",
+            "Recorded Git path/status transitions only. File contents are never stored.",
+            "",
+        ]
+        for item in events:
+            lines.append(f"{item['observed_at'][:19]}  {item['event_type']}")
+            lines.append(f"  {item['path']}")
+            lines.append(f"  Evidence: {item['evidence']}")
+        if not events:
+            lines.extend([
+                "No activity snapshots recorded.",
+                "Run: breezy-trace activity scan",
+            ])
+        lines.extend(["", "Scanning is explicit; no background watcher is running."])
+        return "\n".join(lines)
+
+    def _code(self, project: Project) -> str:
+        with connect(self.registry.db_path) as connection:
+            files = connection.execute(
+                "SELECT language, COUNT(*) AS count FROM code_indexed_files "
+                "WHERE project_id = ? GROUP BY language ORDER BY language",
+                (project.id,),
+            ).fetchall()
+            symbols = connection.execute(
+                "SELECT language, COUNT(*) AS count FROM code_symbols "
+                "WHERE project_id = ? GROUP BY language ORDER BY language",
+                (project.id,),
+            ).fetchall()
+            imports = connection.execute(
+                "SELECT language, COUNT(*) AS count FROM code_imports "
+                "WHERE project_id = ? GROUP BY language ORDER BY language",
+                (project.id,),
+            ).fetchall()
+        lines = [
+            "CODE INTELLIGENCE",
+            "Local symbol/import index. Source text is not persisted.",
+            "",
+            "INDEXED FILES",
+        ]
+        lines.extend(f"• {row['language']}: {row['count']}" for row in files)
+        if not files:
+            lines.append("No files indexed yet. Run: breezy-trace code index")
+        lines.extend(["", "SYMBOLS"])
+        lines.extend(f"• {row['language']}: {row['count']}" for row in symbols)
+        if not symbols:
+            lines.append("No symbols indexed.")
+        lines.extend(["", "IMPORT RECORDS"])
+        lines.extend(f"• {row['language']}: {row['count']}" for row in imports)
+        if not imports:
+            lines.append("No imports indexed.")
+        lines.extend(["", "PARSER SUPPORT"])
+        lines.extend(f"• {language}" for language in ["python", *sorted(LANGUAGE_EXTENSIONS)])
+        lines.extend(["", "Search with: breezy-trace code search QUERY"])
+        return "\n".join(lines)
+
+    def _settings(self, project: Project) -> str:
+        return "\n".join([
+            "LOCAL SETTINGS & PRIVACY",
+            "",
+            f"Active project: {project.name}",
+            f"Project path: {project.path}",
+            f"Local database: {database_path()}",
+            "",
+            "PRIVACY BOUNDARIES",
+            "• Project metadata and journal data stay in your local SQLite database.",
+            "• Git inspection is read-only; Breezy Trace never fetches or changes branches.",
+            "• Agent integrations store allowlisted session metadata, not transcripts.",
+            "• Code indexing stores symbols, imports, paths and hashes, not source text.",
+            "• No telemetry or mandatory AI provider.",
+            "",
+            "BACKUP & RESTORE",
+            "Create a portable backup: breezy-trace backup",
+            "Restore explicitly: breezy-trace restore FILE --yes",
+            "",
+            "INTEGRATIONS",
+            "Claude Code and OpenCode metadata discovery are available.",
+            "Other editor integrations are not yet implemented.",
+        ])
+
+    def _navigate(self, view: str) -> None:
+        self._render_view(view)
+
+    def action_show_home(self) -> None:
+        self._navigate("home")
+
+    def action_show_overview(self) -> None:
+        self._navigate("overview")
+
+    def action_show_journal(self) -> None:
+        self._navigate("journal")
+
+    def action_show_agents(self) -> None:
+        self._navigate("agents")
+
+    def action_show_git(self) -> None:
+        self._navigate("git")
+
+    def action_show_activity(self) -> None:
+        self._navigate("activity")
+
+    def action_show_code(self) -> None:
+        self._navigate("code")
+
+    def action_show_settings(self) -> None:
+        self._navigate("settings")
 
     def action_focus_projects(self) -> None:
         self.query_one("#project-table", DataTable).focus()
-
-    def action_home(self) -> None:
-        self.active_project = None
-        self.query_one("#project-detail", Static).update(
-            "[bold]Global overview[/bold]\n\n"
-            f"{len(self.registry.list_projects())} registered projects.\n\n"
-            "Select a project to view its current Git state."
-        )
