@@ -90,7 +90,7 @@ def test_activity_is_project_scoped_and_limit_is_validated(tmp_path: Path) -> No
 
 
 def test_scan_rejects_unregistered_project(tmp_path: Path) -> None:
-    root, project, db_path = make_project(tmp_path)
+    _root, project, db_path = make_project(tmp_path)
     ProjectRegistry(db_path).unregister(project.path)
     with pytest.raises(ValueError, match="not registered"):
         FileActivityStore(db_path).scan(project)
