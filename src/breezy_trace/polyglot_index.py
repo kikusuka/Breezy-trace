@@ -192,7 +192,9 @@ class TreeSitterCodeIndex:
                 continue
 
             try:
-                parser = parser_cache.setdefault(language, get_parser(language))
+                if language not in parser_cache:
+                    parser_cache[language] = get_parser(language)
+                parser = parser_cache[language]
                 tree = parser.parse(raw)
                 symbols, imports = _extract(tree, raw)
                 parse_error = "syntax errors detected" if tree.root_node.has_error else None
