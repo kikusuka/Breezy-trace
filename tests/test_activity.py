@@ -1,4 +1,5 @@
 import subprocess
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -100,7 +101,7 @@ def test_scan_rejects_unregistered_project(tmp_path: Path) -> None:
 
 def test_scan_prunes_activity_events_older_than_90_days(tmp_path: Path) -> None:
     _root, project, db_path = make_project(tmp_path)
-    with connect(db_path) as connection:
+    with closing(connect(db_path)) as connection, connection:
         connection.execute(
             """
             INSERT INTO file_events
@@ -112,7 +113,7 @@ def test_scan_prunes_activity_events_older_than_90_days(tmp_path: Path) -> None:
 
     FileActivityStore(db_path).scan(project)
 
-    with connect(db_path) as connection:
+    with closing(connect(db_path)) as connection, connection:
         remaining = connection.execute(
             "SELECT COUNT(*) FROM file_events WHERE id = 'old-event'"
         ).fetchone()[0]
