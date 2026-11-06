@@ -40,13 +40,13 @@ cd ~/code/my-project
 breezy-trace register .
 ```
 
-Then run `breezy-trace` from that registered repository to open its overview. Run it outside a registered repository to open the global project selector. Only explicitly registered repositories appear in the selector.
+Then run `breezy-trace` (or `trace`) from that registered repository to open its overview. From an unregistered Git repository, launch either command and confirm the registration prompt to add and open it. From outside a repository, the command opens the global project selector. Use **Open Project** on Home to browse to another Git repository; Trace registers it and opens its overview. Nested repositories resolve to their own Git root.
 
 ## CLI reference
 
 | Command | Purpose |
 | --- | --- |
-| `breezy-trace` | Open the current registered project or global home |
+| `breezy-trace` (or `trace`) | Open the current project or global home |
 | `breezy-trace register <path>` | Register a Git repository |
 | `breezy-trace register . --name "Display name"` | Register with a display name |
 | `breezy-trace projects` | List registered projects |
