@@ -7,9 +7,35 @@ from breezy_trace.database import SCHEMA_VERSION, connect
 
 
 def _make_legacy_database(path: Path, version: int) -> None:
-    """Create a real current database, then remove objects added after version."""
+    """Create a populated current database, then remove later schema objects."""
     connection = connect(path)
-    connection.close()
+    try:
+        with connection:
+            connection.execute(
+                """
+                INSERT INTO projects (id, name, path, registered_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                ("project-1", "preserved", "/tmp/preserved", "2026-01-01T00:00:00"),
+            )
+            connection.execute(
+                """
+                INSERT INTO journal_entries
+                    (id, project_id, title, body, entry_type, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "note-1",
+                    "project-1",
+                    "Keep this",
+                    "Original journal data",
+                    "note",
+                    "2026-01-01T00:00:00",
+                    "2026-01-01T00:00:00",
+                ),
+            )
+    finally:
+        connection.close()
 
     with sqlite3.connect(path) as connection:
         if version < 4:
