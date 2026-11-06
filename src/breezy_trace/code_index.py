@@ -88,10 +88,15 @@ def git_source_paths(root: Path, suffixes: set[str]) -> list[str]:
         raise RuntimeError("Git file discovery is unavailable.") from error
 
     timed_out = threading.Event()
-    timer = threading.Timer(
-        DISCOVERY_TIMEOUT_SECONDS,
-        lambda: (timed_out.set(), process.kill()),
-    )
+
+    def stop_process() -> None:
+        timed_out.set()
+        try:
+            process.kill()
+        except ProcessLookupError:
+            pass
+
+    timer = threading.Timer(DISCOVERY_TIMEOUT_SECONDS, stop_process)
     timer.start()
     paths: set[str] = set()
     pending = bytearray()
@@ -103,7 +108,10 @@ def git_source_paths(root: Path, suffixes: set[str]) -> list[str]:
             output_bytes += len(chunk)
             if output_bytes > MAX_DISCOVERY_OUTPUT_BYTES:
                 exceeded = True
-                process.kill()
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
                 break
             pending.extend(chunk)
             while (separator := pending.find(0)) >= 0:
@@ -114,7 +122,10 @@ def git_source_paths(root: Path, suffixes: set[str]) -> list[str]:
                 candidate_count += 1
                 if candidate_count > MAX_DISCOVERED_PATHS:
                     exceeded = True
-                    process.kill()
+                    try:
+                        process.kill()
+                    except ProcessLookupError:
+                        pass
                     break
                 decoded = item.decode("utf-8", errors="replace")
                 if Path(decoded).suffix.lower() in suffixes:
