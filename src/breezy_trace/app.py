@@ -15,7 +15,6 @@ from textual.widgets import DataTable, Footer, Header, Static
 
 from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
-from breezy_trace.code_index import PythonCodeIndex
 from breezy_trace.config import database_path
 from breezy_trace.database import connect
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
