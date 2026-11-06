@@ -16,6 +16,9 @@ def test_workspace_mounts_at_narrow_and_wide_terminal_sizes(tmp_path: Path, monk
                 await pilot.pause()
                 assert pilot.app.query_one("#workspace") is not None
                 assert pilot.app.query_one("#project-table") is not None
+                assert "WELCOME TO BREEZY TRACE" in str(pilot.app.query_one("#content").render())
+                assert pilot.app.query_one("#intro-kicker") is not None
+                assert not pilot.app.query("#intro")
 
     asyncio.run(exercise())
 
