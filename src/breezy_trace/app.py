@@ -269,11 +269,22 @@ class TraceApp(App[None]):
             projects = self.registry.list_projects()
             if not projects:
                 body = (
-                    "WELCOME TO BREEZY TRACE\n\n"
-                    "Your registered projects will appear in the list.\n\n"
-                    "From a Git repository, run:\n"
-                    "  breezy-trace register .\n\n"
-                    "Then launch breezy-trace to return here."
+                    "WELCOME TO BREEZY TRACE\\n\\n"
+                    "Your registered projects will appear in the list.\\n\\n"
+                    "GET STARTED\\n"
+                    "From a Git repository, run: breezy-trace register .\\n"
+                    "Then launch breezy-trace from that repository.\\n\\n"
+                    "WHAT'S INSIDE\\n"
+                    "Project overview  ·  Git status, diffs and recent commits\\n"
+                    "Journal           ·  Notes, tasks and decisions\\n"
+                    "Agent sessions    ·  Claude Code and OpenCode metadata\\n"
+                    "Git intelligence  ·  Branches, divergence and stashes\\n"
+                    "File activity     ·  Explicit change-history snapshots\\n"
+                    "Code intelligence ·  Symbols, imports and call sites\\n"
+                    "Settings          ·  Privacy, storage, backup and restore\\n\\n"
+                    "CLI tools after registration: resume, inspect, branches,\\n"
+                    "sessions --sync, activity scan, code index/search/imports/calls,\\n"
+                    "backup, restore, notes, tasks and decisions."
                 )
             else:
                 body = (
