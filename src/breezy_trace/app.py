@@ -416,7 +416,7 @@ class TraceApp(App[None]):
         data = branch_intelligence(Path(project.path))
         status = inspect_status(Path(project.path))
         if not data.get("available", True):
-            return "GIT INTELLIGENCE · READ ONLY\\n\\nGit is unavailable or the inspection timed out."
+            return "GIT INTELLIGENCE · READ ONLY\n\nGit is unavailable or the inspection timed out."
         lines = [
             "GIT INTELLIGENCE · READ ONLY",
             f"Current branch: {status.branch}",
