@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["main", "feat/**", "hardening/**"]
+    branches: ["main", "feat/**"]
   pull_request:
 
 permissions:
@@ -31,6 +31,8 @@ jobs:
         run: ruff check .
       - name: Run tests
         run: pytest
+      - name: Smoke-test indexing benchmark
+        run: python scripts/benchmark_index.py --files 25
       - name: Build and validate distributions
         run: |
           python -m build

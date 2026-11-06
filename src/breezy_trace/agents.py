@@ -7,12 +7,17 @@ session metadata documents are inspected.
 import hashlib
 import json
 import os
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from itertools import islice
 from pathlib import Path
 
 from breezy_trace.database import connect
 from breezy_trace.models import Project
+
+MAX_METADATA_BYTES = 5_000_000
+MAX_DISCOVERY_FILES = 2_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,7 +34,12 @@ def _iso(value: object) -> str | None:
     if value is None:
         return None
     if isinstance(value, (int, float)):
-        return datetime.fromtimestamp(value / 1000 if value > 10_000_000_000 else value, UTC).isoformat()
+        try:
+            if not isinstance(value, bool):
+                timestamp = value / 1000 if value > 10_000_000_000 else value
+                return datetime.fromtimestamp(timestamp, UTC).isoformat()
+        except (OverflowError, OSError, ValueError):
+            return None
     if isinstance(value, str):
         return value
     return None
@@ -37,6 +47,8 @@ def _iso(value: object) -> str | None:
 
 def _read_json(path: Path) -> dict[str, object] | None:
     try:
+        if path.stat().st_size > MAX_METADATA_BYTES:
+            return None
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError):
         return None
@@ -79,7 +91,7 @@ def discover_claude_sessions(project_path: Path, claude_home: Path | None = None
     if not root.is_dir():
         return []
     found: list[AgentSession] = []
-    for index_path in root.glob("*/sessions-index.json"):
+    for index_path in islice(root.glob("*/sessions-index.json"), MAX_DISCOVERY_FILES):
         index = _read_json(index_path)
         if not index:
             continue
@@ -119,7 +131,7 @@ def discover_opencode_sessions(
     for root in roots if roots is not None else _opencode_roots():
         if not root.is_dir():
             continue
-        for session_path in root.glob("*/*.json"):
+        for session_path in islice(root.glob("*/*.json"), MAX_DISCOVERY_FILES):
             session = _read_json(session_path)
             if not session or not _project_matches(session.get("directory"), project_path):
                 continue
@@ -152,7 +164,7 @@ class AgentSessionStore:
     def sync(self, project: Project) -> int:
         sessions = discover_claude_sessions(Path(project.path))
         sessions.extend(discover_opencode_sessions(Path(project.path)))
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection, connection:
             exists = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ?", (project.id,)
             ).fetchone()
@@ -186,7 +198,7 @@ class AgentSessionStore:
     def list_sessions(self, project: Project, limit: int = 20) -> list[dict[str, object]]:
         if limit < 1:
             raise ValueError("Limit must be positive.")
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT provider, external_id, started_at, ended_at, source, metadata_json

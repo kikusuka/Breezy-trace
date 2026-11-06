@@ -5,12 +5,13 @@ operations are explicit, local actions; no background watcher or network call
 is started by opening the application.
 """
 
+from contextlib import closing
 from pathlib import Path
 from typing import ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Vertical
 from textual.widgets import DataTable, Footer, Header, Static
 
 from breezy_trace.activity import FileActivityStore
@@ -56,13 +57,16 @@ Header {
     content-align: center middle;
 }
 #workspace {
+    layout: horizontal;
     height: 1fr;
     margin: 1 1 0 1;
 }
 #project-list {
     width: 34%;
-    min-width: 25;
+    min-width: 18;
+    height: 1fr;
 }
+
 #project-table {
     height: 1fr;
     border: round #334155;
@@ -165,7 +169,7 @@ class TraceApp(App[None]):
             id="nav",
             markup=False,
         )
-        with Horizontal(id="workspace"):
+        with Container(id="workspace"):
             with Vertical(id="project-list"):
                 yield Static("YOUR PROJECTS", id="content-title", markup=False)
                 yield DataTable(id="project-table", cursor_type="row")
@@ -185,13 +189,12 @@ class TraceApp(App[None]):
     def on_mount(self) -> None:
         table = self.query_one("#project-table", DataTable)
         table.add_columns("PROJECT", "BRANCH")
+        self._apply_responsive_layout(self.size.width)
         projects = self.registry.list_projects()
         for item in projects:
-            try:
-                branch = inspect_status(Path(item.path)).branch
-            except (OSError, RuntimeError):
-                branch = "unavailable"
-            table.add_row(item.name, branch, key=item.id)
+            # Avoid spawning one Git process per registered project during startup.
+            # Branch details are loaded only after the user opens a project.
+            table.add_row(item.name, "select to inspect", key=item.id)
         if self.active_project:
             self.registry.mark_opened(self.active_project.id)
             self._render_view("overview")
@@ -199,6 +202,31 @@ class TraceApp(App[None]):
             self._render_view("home")
         self._show_intro_brand()
         self.set_timer(0.62, self._show_intro_quote)
+
+    def on_resize(self, event) -> None:
+        """Switch the workspace between columns and stacked panels as it resizes."""
+        self._apply_responsive_layout(event.size.width)
+
+    def _apply_responsive_layout(self, width: int) -> None:
+        workspace = self.query_one("#workspace", Container)
+        project_list = self.query_one("#project-list", Vertical)
+        content_panel = self.query_one("#content-panel", Vertical)
+        if width <= 80:
+            workspace.styles.layout = "vertical"
+            project_list.styles.width = "100%"
+            project_list.styles.height = 12
+            project_list.styles.min_height = 7
+            content_panel.styles.width = "100%"
+            content_panel.styles.margin_left = 0
+            content_panel.styles.min_height = 12
+        else:
+            workspace.styles.layout = "horizontal"
+            project_list.styles.width = "34%"
+            project_list.styles.height = "1fr"
+            project_list.styles.min_height = 0
+            content_panel.styles.width = "1fr"
+            content_panel.styles.margin_left = 1
+            content_panel.styles.min_height = 0
 
     def _set_intro(self, main: str, kicker: str = "") -> None:
         self.query_one("#intro-copy", Static).update(main)
@@ -318,7 +346,11 @@ class TraceApp(App[None]):
             f"Branch: {status.branch}",
             f"Staged: {status.staged}    Modified: {status.modified}    Untracked: {status.untracked}",
             f"Ahead: {status.ahead}    Behind: {status.behind}",
-            f"Conflicts: {details['conflicts']}    Stashes: {details['stashes']}",
+            (
+                f"Conflicts: {details['conflicts']}    Stashes: {details['stashes']}"
+                if details.get("available", True)
+                else "Git details unavailable (command failed or timed out)"
+            ),
             "",
             "RECENT LOCAL COMMITS",
         ]
@@ -380,6 +412,8 @@ class TraceApp(App[None]):
     def _git(self, project: Project) -> str:
         data = branch_intelligence(Path(project.path))
         status = inspect_status(Path(project.path))
+        if not data.get("available", True):
+            return "GIT INTELLIGENCE · READ ONLY\n\nGit is unavailable or the inspection timed out."
         lines = [
             "GIT INTELLIGENCE · READ ONLY",
             f"Current branch: {status.branch}",
@@ -420,7 +454,7 @@ class TraceApp(App[None]):
         return "\n".join(lines)
 
     def _code(self, project: Project) -> str:
-        with connect(self.registry.db_path) as connection:
+        with closing(connect(self.registry.db_path)) as connection, connection:
             files = connection.execute(
                 "SELECT language, COUNT(*) AS count FROM code_indexed_files "
                 "WHERE project_id = ? GROUP BY language ORDER BY language",

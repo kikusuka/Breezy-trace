@@ -64,12 +64,16 @@ IMPORT_NODES = {
 
 
 def _git_paths(root: Path) -> list[str]:
-    result = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"],
-        capture_output=True,
-        check=False,
-        env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
-    )
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"],
+            capture_output=True,
+            check=False,
+            timeout=30,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as error:
+        raise RuntimeError("Git file discovery is unavailable or timed out.") from error
     if result.returncode:
         reason = result.stderr.decode("utf-8", errors="replace").strip()
         raise RuntimeError(reason or "Could not list project files with Git.")
@@ -150,134 +154,135 @@ class TreeSitterCodeIndex:
             ) from error
 
         root = Path(project.path).resolve()
-        with connect(self.db_path) as connection:
+        connection = connect(self.db_path)
+        try:
             registered = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ? AND path = ?",
                 (project.id, str(root)),
             ).fetchone()
-        if not registered:
-            raise ValueError("Project is not registered in this Breezy Trace database.")
+            if not registered:
+                raise ValueError("Project is not registered in this Breezy Trace database.")
 
-        parser_cache: dict[str, Any] = {}
-        current_paths: set[str] = set()
-        indexed = unchanged = syntax_errors = skipped = 0
+            parser_cache: dict[str, Any] = {}
+            current_paths: set[str] = set()
+            indexed = unchanged = syntax_errors = skipped = 0
 
-        for relative in _git_paths(root):
-            suffix = Path(relative).suffix.lower()
-            language = next(
-                name for name, extensions in LANGUAGE_EXTENSIONS.items() if suffix in extensions
-            )
-            path = root / relative
-            try:
-                if path.is_symlink() or not path.is_file():
+            for relative in _git_paths(root):
+                suffix = Path(relative).suffix.lower()
+                language = next(
+                    name for name, extensions in LANGUAGE_EXTENSIONS.items() if suffix in extensions
+                )
+                path = root / relative
+                try:
+                    if path.is_symlink() or not path.is_file():
+                        skipped += 1
+                        continue
+                    if not path.resolve().is_relative_to(root) or path.stat().st_size > MAX_FILE_BYTES:
+                        skipped += 1
+                        continue
+                    raw = path.read_bytes()
+                except OSError:
                     skipped += 1
                     continue
-                if not path.resolve().is_relative_to(root) or path.stat().st_size > MAX_FILE_BYTES:
-                    skipped += 1
-                    continue
-                raw = path.read_bytes()
-            except OSError:
-                skipped += 1
-                continue
 
-            current_paths.add(relative)
-            digest = hashlib.sha256(raw).hexdigest()
-            with connect(self.db_path) as connection:
+                current_paths.add(relative)
+                digest = hashlib.sha256(raw).hexdigest()
                 previous = connection.execute(
                     "SELECT content_hash FROM code_indexed_files WHERE project_id = ? AND path = ?",
                     (project.id, relative),
                 ).fetchone()
-            if previous and previous["content_hash"] == digest:
-                unchanged += 1
-                continue
+                if previous and previous["content_hash"] == digest:
+                    unchanged += 1
+                    continue
 
-            try:
-                if language not in parser_cache:
-                    parser_cache[language] = get_parser(language)
-                parser = parser_cache[language]
-                tree = parser.parse(raw)
-                symbols, imports = _extract(tree, raw)
-                parse_error = "syntax errors detected" if tree.root_node.has_error else None
-                if parse_error:
+                try:
+                    if language not in parser_cache:
+                        parser_cache[language] = get_parser(language)
+                    tree = parser_cache[language].parse(raw)
+                    symbols, imports = _extract(tree, raw)
+                    parse_error = "syntax errors detected" if tree.root_node.has_error else None
+                    if parse_error:
+                        syntax_errors += 1
+                except Exception as error:  # noqa: BLE001 - parser failures are package-specific.
+                    symbols, imports = [], []
+                    parse_error = f"parser error: {error}"
                     syntax_errors += 1
-            except Exception as error:  # noqa: BLE001 - parser download errors are package-specific.
-                symbols, imports = [], []
-                parse_error = f"parser error: {error}"
-                syntax_errors += 1
 
-            with connect(self.db_path) as connection:
-                connection.execute(
-                    "DELETE FROM code_symbols WHERE project_id = ? AND path = ?",
-                    (project.id, relative),
-                )
-                connection.execute(
-                    "DELETE FROM code_imports WHERE project_id = ? AND path = ?",
-                    (project.id, relative),
-                )
-                connection.execute(
-                    """
-                    INSERT INTO code_indexed_files
-                    (project_id, path, content_hash, indexed_at, parse_error, language)
-                    VALUES (?, ?, ?, datetime('now'), ?, ?)
-                    ON CONFLICT(project_id, path) DO UPDATE SET
-                        content_hash = excluded.content_hash,
-                        indexed_at = excluded.indexed_at,
-                        parse_error = excluded.parse_error,
-                        language = excluded.language
-                    """,
-                    (project.id, relative, digest, parse_error, language),
-                )
-                connection.executemany(
-                    """
-                    INSERT INTO code_symbols
-                    (id, project_id, path, name, qualified_name, kind, line, end_line, language)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    [
-                        (
-                            uuid.uuid4().hex, project.id, relative, item["name"],
-                            item["qualified_name"], item["kind"], item["line"],
-                            item["end_line"], language,
-                        )
-                        for item in symbols
-                    ],
-                )
-                connection.executemany(
-                    """
-                    INSERT INTO code_imports (project_id, path, module, line, language)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    [
-                        (project.id, relative, item["module"], item["line"], language)
-                        for item in imports
-                    ],
-                )
-            indexed += 1
+                with connection:
+                    connection.execute(
+                        "DELETE FROM code_symbols WHERE project_id = ? AND path = ?",
+                        (project.id, relative),
+                    )
+                    connection.execute(
+                        "DELETE FROM code_imports WHERE project_id = ? AND path = ?",
+                        (project.id, relative),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO code_indexed_files
+                        (project_id, path, content_hash, indexed_at, parse_error, language)
+                        VALUES (?, ?, ?, datetime('now'), ?, ?)
+                        ON CONFLICT(project_id, path) DO UPDATE SET
+                            content_hash = excluded.content_hash,
+                            indexed_at = excluded.indexed_at,
+                            parse_error = excluded.parse_error,
+                            language = excluded.language
+                        """,
+                        (project.id, relative, digest, parse_error, language),
+                    )
+                    connection.executemany(
+                        """
+                        INSERT INTO code_symbols
+                        (id, project_id, path, name, qualified_name, kind, line, end_line, language)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        [
+                            (
+                                uuid.uuid4().hex, project.id, relative, item["name"],
+                                item["qualified_name"], item["kind"], item["line"],
+                                item["end_line"], language,
+                            )
+                            for item in symbols
+                        ],
+                    )
+                    connection.executemany(
+                        """
+                        INSERT INTO code_imports (project_id, path, module, line, language)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                        [
+                            (project.id, relative, item["module"], item["line"], language)
+                            for item in imports
+                        ],
+                    )
+                indexed += 1
 
-        with connect(self.db_path) as connection:
             rows = connection.execute(
                 "SELECT path FROM code_indexed_files WHERE project_id = ? AND language != 'python'",
                 (project.id,),
             ).fetchall()
             stale = [row["path"] for row in rows if row["path"] not in current_paths]
-            for relative in stale:
-                connection.execute(
-                    "DELETE FROM code_indexed_files WHERE project_id = ? AND path = ?",
-                    (project.id, relative),
-                )
-                connection.execute(
-                    "DELETE FROM code_symbols WHERE project_id = ? AND path = ?",
-                    (project.id, relative),
-                )
-                connection.execute(
-                    "DELETE FROM code_imports WHERE project_id = ? AND path = ?",
-                    (project.id, relative),
-                )
+            with connection:
+                for relative in stale:
+                    connection.execute(
+                        "DELETE FROM code_indexed_files WHERE project_id = ? AND path = ?",
+                        (project.id, relative),
+                    )
+                    connection.execute(
+                        "DELETE FROM code_symbols WHERE project_id = ? AND path = ?",
+                        (project.id, relative),
+                    )
+                    connection.execute(
+                        "DELETE FROM code_imports WHERE project_id = ? AND path = ?",
+                        (project.id, relative),
+                    )
 
-        return {
-            "files_indexed": indexed,
-            "files_unchanged": unchanged,
-            "syntax_errors": syntax_errors,
-            "files_skipped": skipped,
-            "stale_files_removed": len(stale),
-        }
+            return {
+                "files_indexed": indexed,
+                "files_unchanged": unchanged,
+                "syntax_errors": syntax_errors,
+                "files_skipped": skipped,
+                "stale_files_removed": len(stale),
+            }
+        finally:
+            connection.close()

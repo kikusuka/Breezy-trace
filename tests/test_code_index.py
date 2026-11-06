@@ -123,3 +123,28 @@ def test_search_is_project_scoped_and_validates_limits(tmp_path: Path) -> None:
         assert "between 1 and 200" in str(error)
     else:
         raise AssertionError("Invalid search limit should fail")
+
+
+def test_index_reuses_one_database_connection_for_many_files(tmp_path: Path, monkeypatch) -> None:
+    import breezy_trace.code_index as code_index_module
+
+    root, project, db_path = make_project(tmp_path)
+    for number in range(12):
+        (root / f"module_{number}.py").write_text(
+            f"def function_{number}():\n    return {number}\n",
+            encoding="utf-8",
+        )
+
+    original_connect = code_index_module.connect
+    calls = 0
+
+    def counting_connect(path):
+        nonlocal calls
+        calls += 1
+        return original_connect(path)
+
+    monkeypatch.setattr(code_index_module, "connect", counting_connect)
+    summary = PythonCodeIndex(db_path).index(project)
+
+    assert summary["files_indexed"] == 12
+    assert calls == 1

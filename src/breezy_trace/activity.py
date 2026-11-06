@@ -7,6 +7,7 @@ starts a watcher, or attributes changes to an agent session.
 import os
 import subprocess
 import uuid
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -65,15 +66,19 @@ class FileActivityStore:
 
     def scan(self, project: Project) -> dict[str, int]:
         """Take one read-only Git status snapshot for a registered project."""
-        result = subprocess.run(
-            [
-                "git", "-C", project.path, "status", "--porcelain=v1", "-z",
-                "--untracked-files=all",
-            ],
-            capture_output=True,
-            check=False,
-            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
-        )
+        try:
+            result = subprocess.run(
+                [
+                    "git", "-C", project.path, "status", "--porcelain=v1", "-z",
+                    "--untracked-files=all",
+                ],
+                capture_output=True,
+                check=False,
+                timeout=12,
+                env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as error:
+            raise RuntimeError("Git status is unavailable or timed out for this project.") from error
         if result.returncode != 0:
             message = result.stderr.decode("utf-8", errors="replace").strip()
             raise RuntimeError(message or "Git status could not be read for this project.")
@@ -81,7 +86,7 @@ class FileActivityStore:
         snapshot = _parse_porcelain(result.stdout)
         observed_at = datetime.now(UTC).isoformat()
         events_created = 0
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection, connection:
             exists = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ?", (project.id,)
             ).fetchone()
@@ -146,7 +151,7 @@ class FileActivityStore:
     def list_events(self, project: Project, limit: int = 30) -> list[dict[str, str]]:
         if not 1 <= limit <= 500:
             raise ValueError("Activity limit must be between 1 and 500.")
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT path, event_type, observed_at, evidence

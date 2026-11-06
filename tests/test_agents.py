@@ -90,3 +90,13 @@ def test_session_sync_is_repeatable_and_project_scoped(tmp_path: Path, monkeypat
     assert store.sync(project) == 1
     assert len(store.list_sessions(project)) == 1
     assert store.list_sessions(other) == []
+
+
+def test_agent_metadata_rejects_oversized_json_and_invalid_timestamps(tmp_path: Path) -> None:
+    from breezy_trace.agents import MAX_METADATA_BYTES, _iso, _read_json
+
+    oversized = tmp_path / "oversized.json"
+    oversized.write_text(" " * (MAX_METADATA_BYTES + 1), encoding="utf-8")
+    assert _read_json(oversized) is None
+    assert _iso(float("inf")) is None
+    assert _iso(10**100) is None
