@@ -1,5 +1,6 @@
 """Read-only Git inspection helpers with bounded subprocess execution."""
 
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -9,12 +10,17 @@ from breezy_trace.models import GitStatus
 GIT_TIMEOUT_SECONDS = 5
 
 
+def _clean_terminal_text(value: str) -> str:
+    """Replace terminal control characters while preserving line/tab layout."""
+    return re.sub(r"[\\x00-\\x08\\x0b-\\x1f\\x7f-\\x9f]", "�", value)
+
+
 def _run(
     path: Path, *args: str, timeout: float = GIT_TIMEOUT_SECONDS
 ) -> subprocess.CompletedProcess[str] | None:
     """Run a read-only Git command and return None when Git is unavailable or slow."""
     try:
-        return subprocess.run(
+        result = subprocess.run(
             ["git", "-C", str(path), *args],
             capture_output=True,
             text=True,
@@ -23,6 +29,11 @@ def _run(
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return None
+    # Git metadata can contain terminal control characters (for example in
+    # commit subjects). Strip them before any caller renders the text.
+    result.stdout = _clean_terminal_text(result.stdout)
+    result.stderr = _clean_terminal_text(result.stderr)
+    return result
 
 
 def inspect_status(path: Path) -> GitStatus:
