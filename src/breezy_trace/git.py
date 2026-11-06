@@ -151,7 +151,7 @@ def branch_intelligence(path: Path) -> dict[str, object]:
             output = run("log", "-20", "--date=short", "--format=%h%x1f%ad%x1f%s", revision)
             if output:
                 for line in output.splitlines():
-                    parts = line.split("\\x1f", 2)
+                    parts = line.split(chr(31), 2)
                     if len(parts) == 3:
                         destination.append({"sha": parts[0], "date": parts[1], "subject": parts[2]})
 
@@ -170,7 +170,7 @@ def branch_intelligence(path: Path) -> dict[str, object]:
     stash_output = run("stash", "list", "--format=%gd%x1f%gs") or ""
     stashes = []
     for line in stash_output.splitlines():
-        fields = line.split("\\x1f", 1)
+        fields = line.split(chr(31), 1)
         if len(fields) == 2:
             stashes.append({"ref": fields[0], "subject": fields[1]})
 
