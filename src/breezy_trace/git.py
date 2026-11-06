@@ -160,13 +160,13 @@ def branch_intelligence(path: Path) -> dict[str, object]:
         items: list[dict[str, str]] = []
         if output:
             for line in output.splitlines():
-                fields = line.split("\\t")
+                fields = line.split(maxsplit=1)
                 if fields and fields[0]:
                     items.append({"name": fields[0], "sha": fields[1] if len(fields) > 1 else ""})
         return items
 
-    local_branches = refs("%(refname:short)%09%(objectname:short)", "refs/heads")
-    remote_branches = refs("%(refname:short)%09%(objectname:short)", "refs/remotes")
+    local_branches = refs("%(refname:short) %(objectname:short)", "refs/heads")
+    remote_branches = refs("%(refname:short) %(objectname:short)", "refs/remotes")
     stash_output = run("stash", "list", "--format=%gd%x1f%gs") or ""
     stashes = []
     for line in stash_output.splitlines():
