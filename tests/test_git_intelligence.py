@@ -56,6 +56,7 @@ def test_branch_intelligence_separates_ahead_and_behind_commits(tmp_path: Path) 
     commit(local, "base.txt", "Base commit")
     run(local, "remote", "add", "origin", str(remote))
     run(local, "push", "-u", "origin", "main")
+    subprocess.run(["git", "--git-dir", str(remote), "symbolic-ref", "HEAD", "refs/heads/main"], check=True)
 
     subprocess.run(["git", "clone", str(remote), str(peer)], check=True, capture_output=True)
     configure(peer)
