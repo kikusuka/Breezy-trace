@@ -38,9 +38,8 @@ class _SymbolVisitor(ast.NodeVisitor):
         self._visit_function(node, "async_function")
 
     def _visit_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef, kind: str) -> None:
-        if any(scope_kind == "class" for _, scope_kind in self.scope):
-            if self.scope and self.scope[-1][1] == "class":
-                kind = "method" if kind == "function" else "async_method"
+        if self.scope and self.scope[-1][1] == "class":
+            kind = "method" if kind == "function" else "async_method"
         elif self.scope:
             kind = "nested_function"
         self._add_symbol(node, kind)
