@@ -16,6 +16,8 @@ from textual.widgets import DataTable, Footer, Header, Static
 from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
 from breezy_trace.config import database_path
+from contextlib import closing
+
 from breezy_trace.database import connect
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
@@ -449,7 +451,7 @@ class TraceApp(App[None]):
         return "\n".join(lines)
 
     def _code(self, project: Project) -> str:
-        with connect(self.registry.db_path) as connection:
+        with closing(connect(self.registry.db_path)) as connection:
             files = connection.execute(
                 "SELECT language, COUNT(*) AS count FROM code_indexed_files "
                 "WHERE project_id = ? GROUP BY language ORDER BY language",
