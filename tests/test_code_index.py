@@ -1,4 +1,7 @@
+import os
 import subprocess
+
+import pytest
 from pathlib import Path
 
 from breezy_trace.code_index import PythonCodeIndex
@@ -168,6 +171,7 @@ def test_git_path_discovery_stops_at_candidate_limit(tmp_path: Path, monkeypatch
         raise AssertionError("Discovery should stop when the candidate limit is exceeded")
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows filenames cannot contain newlines")
 def test_git_path_discovery_keeps_nul_delimited_filenames(tmp_path: Path) -> None:
     import breezy_trace.code_index as code_index_module
 
