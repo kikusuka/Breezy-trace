@@ -7,10 +7,10 @@ starts a watcher, or attributes changes to an agent session.
 import os
 import subprocess
 import uuid
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
-from contextlib import closing
 
 from breezy_trace.database import connect
 from breezy_trace.models import Project
