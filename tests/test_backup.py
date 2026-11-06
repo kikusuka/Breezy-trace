@@ -117,3 +117,19 @@ def test_backup_handles_uri_special_characters_in_paths(tmp_path: Path) -> None:
 
     projects = ProjectRegistry(restored).list_projects()
     assert len(projects) == 1
+
+
+
+def test_restore_refuses_database_with_wal_sidecars(tmp_path: Path) -> None:
+    backup = tmp_path / "backup.sqlite3"
+    destination = tmp_path / "live.sqlite3"
+    make_database(backup)
+    destination.write_bytes(b"existing live database")
+    wal = Path(f"{destination}-wal")
+    wal.write_bytes(b"active WAL marker")
+
+    with pytest.raises(RuntimeError, match="Close every Breezy Trace process"):
+        restore_database(backup, destination)
+
+    assert destination.read_bytes() == b"existing live database"
+    assert wal.read_bytes() == b"active WAL marker"
