@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any
 
 from breezy_trace.code_index import MAX_FILE_BYTES
+from contextlib import closing
+
 from breezy_trace.database import connect
 from breezy_trace.models import Project
 
@@ -150,7 +152,7 @@ class TreeSitterCodeIndex:
             ) from error
 
         root = Path(project.path).resolve()
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             registered = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ? AND path = ?",
                 (project.id, str(root)),
@@ -182,7 +184,7 @@ class TreeSitterCodeIndex:
 
             current_paths.add(relative)
             digest = hashlib.sha256(raw).hexdigest()
-            with connect(self.db_path) as connection:
+            with closing(connect(self.db_path)) as connection:
                 previous = connection.execute(
                     "SELECT content_hash FROM code_indexed_files WHERE project_id = ? AND path = ?",
                     (project.id, relative),
@@ -205,7 +207,7 @@ class TreeSitterCodeIndex:
                 parse_error = f"parser error: {error}"
                 syntax_errors += 1
 
-            with connect(self.db_path) as connection:
+            with closing(connect(self.db_path)) as connection:
                 connection.execute(
                     "DELETE FROM code_symbols WHERE project_id = ? AND path = ?",
                     (project.id, relative),
@@ -254,7 +256,7 @@ class TreeSitterCodeIndex:
                 )
             indexed += 1
 
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             rows = connection.execute(
                 "SELECT path FROM code_indexed_files WHERE project_id = ? AND language != 'python'",
                 (project.id,),
