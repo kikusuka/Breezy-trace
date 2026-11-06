@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from breezy_trace.config import database_path
+from contextlib import closing
+
 from breezy_trace.database import connect
 from breezy_trace.models import Project
 
@@ -21,7 +23,7 @@ class JournalStore:
         self.db_path = db_path or database_path()
 
     def _project(self, project: Project) -> None:
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             exists = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ?", (project.id,)
             ).fetchone()
@@ -34,7 +36,7 @@ class JournalStore:
             raise ValueError("A journal entry needs a title.")
         self._project(project)
         entry_id, now = str(uuid.uuid4()), _now()
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             connection.execute(
                 """INSERT INTO journal_entries
                    (id, project_id, title, body, entry_type, created_at, updated_at)
@@ -47,7 +49,7 @@ class JournalStore:
         self._project(project)
         if limit < 1:
             raise ValueError("Limit must be at least 1.")
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             return connection.execute(
                 """SELECT id, title, body, entry_type, created_at, updated_at
                    FROM journal_entries WHERE project_id = ?
@@ -61,7 +63,7 @@ class JournalStore:
             raise ValueError("A task needs a title.")
         self._project(project)
         task_id = str(uuid.uuid4())
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             connection.execute(
                 """INSERT INTO project_tasks
                    (id, project_id, title, details, status, created_at)
@@ -81,12 +83,12 @@ class JournalStore:
             query += " AND status = ?"
             params += (status,)
         query += " ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END, created_at DESC"
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             return connection.execute(query, params).fetchall()
 
     def complete_task(self, project: Project, task_id: str) -> bool:
         self._project(project)
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             cursor = connection.execute(
                 """UPDATE project_tasks SET status = 'done', completed_at = ?
                    WHERE id = ? AND project_id = ? AND status != 'done'""",
@@ -102,7 +104,7 @@ class JournalStore:
             raise ValueError("A decision needs both a title and a decision.")
         self._project(project)
         decision_id = str(uuid.uuid4())
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             connection.execute(
                 """INSERT INTO project_decisions
                    (id, project_id, title, context, decision, created_at)
@@ -115,7 +117,7 @@ class JournalStore:
         self._project(project)
         if limit < 1:
             raise ValueError("Limit must be at least 1.")
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             return connection.execute(
                 """SELECT id, title, context, decision, created_at
                    FROM project_decisions WHERE project_id = ?
