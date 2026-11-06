@@ -9,13 +9,11 @@ and parse status are persisted.
 from __future__ import annotations
 
 import hashlib
-import os
-import subprocess
 import uuid
 from pathlib import Path
 from typing import Any
 
-from breezy_trace.code_index import MAX_FILE_BYTES
+from breezy_trace.code_index import MAX_FILE_BYTES, git_source_paths
 from breezy_trace.database import connect
 from breezy_trace.models import Project
 
@@ -64,26 +62,12 @@ IMPORT_NODES = {
 
 
 def _git_paths(root: Path) -> list[str]:
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"],
-            capture_output=True,
-            check=False,
-            timeout=30,
-            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
-        )
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as error:
-        raise RuntimeError("Git file discovery is unavailable or timed out.") from error
-    if result.returncode:
-        reason = result.stderr.decode("utf-8", errors="replace").strip()
-        raise RuntimeError(reason or "Could not list project files with Git.")
-    return sorted(
-        item.decode("utf-8", errors="replace")
-        for item in result.stdout.split(b"\0")
-        if item and Path(item.decode("utf-8", errors="replace")).suffix.lower()
-        in {ext for extensions in LANGUAGE_EXTENSIONS.values() for ext in extensions}
-    )
-
+    suffixes = {
+        extension
+        for extensions in LANGUAGE_EXTENSIONS.values()
+        for extension in extensions
+    }
+    return git_source_paths(root, suffixes)
 
 def _node_text(node: Any, source: bytes) -> str:
     return source[node.start_byte:node.end_byte].decode("utf-8", errors="replace").strip()
