@@ -131,7 +131,7 @@ def test_index_reuses_one_database_connection_for_many_files(tmp_path: Path, mon
     root, project, db_path = make_project(tmp_path)
     for number in range(12):
         (root / f"module_{number}.py").write_text(
-            f"def function_{number}():\\n    return {number}\\n",
+            f"def function_{number}():\n    return {number}\n",
             encoding="utf-8",
         )
 
