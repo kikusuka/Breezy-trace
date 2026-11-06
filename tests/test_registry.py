@@ -75,3 +75,14 @@ def test_unregister_cascades_project_journal_data(tmp_path: Path) -> None:
     assert registry.unregister(project.name) is True
     with pytest.raises(ValueError, match="not registered"):
         store.list_entries(project)
+
+
+def test_non_git_directory_ignores_inherited_git_dir(tmp_path: Path, monkeypatch) -> None:
+    external_repo = make_repo(tmp_path / "external")
+    directory = tmp_path / "plain"
+    directory.mkdir()
+    monkeypatch.setenv("GIT_DIR", str(external_repo / ".git"))
+    registry = ProjectRegistry(tmp_path / "trace.sqlite3")
+
+    with pytest.raises(ProjectError, match="Not inside a Git repository"):
+        registry.register(directory)
