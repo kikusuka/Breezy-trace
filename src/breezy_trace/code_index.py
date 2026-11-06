@@ -266,7 +266,7 @@ class PythonCodeIndex:
             else:
                 rows = connection.execute(
                     """
-                    SELECT path, module, line FROM code_imports
+                    SELECT path, module, line, language FROM code_imports
                     WHERE project_id = ? ORDER BY path, line LIMIT ?
                     """,
                     (project.id, limit),
