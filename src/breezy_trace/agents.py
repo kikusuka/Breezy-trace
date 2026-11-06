@@ -12,13 +12,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-
 from breezy_trace.database import connect
 from breezy_trace.models import Project
 
 MAX_METADATA_BYTES = 5_000_000
 MAX_DISCOVERY_FILES = 2_000
-
 
 @dataclass(frozen=True, slots=True)
 class AgentSession:
@@ -28,7 +26,6 @@ class AgentSession:
     ended_at: str | None
     source: str
     metadata: dict[str, object]
-
 
 def _iso(value: object) -> str | None:
     if value is None:
@@ -44,7 +41,6 @@ def _iso(value: object) -> str | None:
         return value
     return None
 
-
 def _read_json(path: Path) -> dict[str, object] | None:
     try:
         if path.stat().st_size > MAX_METADATA_BYTES:
@@ -54,7 +50,6 @@ def _read_json(path: Path) -> dict[str, object] | None:
         return None
     return value if isinstance(value, dict) else None
 
-
 def _project_matches(value: object, project_path: Path) -> bool:
     if not isinstance(value, str) or not value:
         return False
@@ -63,11 +58,9 @@ def _project_matches(value: object, project_path: Path) -> bool:
     except (OSError, RuntimeError):
         return False
 
-
 def _claude_home() -> Path:
     override = os.environ.get("BREEZY_TRACE_CLAUDE_HOME")
     return Path(override).expanduser() if override else Path.home() / ".claude"
-
 
 def _opencode_roots() -> list[Path]:
     override = os.environ.get("BREEZY_TRACE_OPENCODE_HOME")
@@ -82,7 +75,6 @@ def _opencode_roots() -> list[Path]:
     if appdata:
         candidates.append(Path(appdata) / "opencode" / "storage" / "session")
     return candidates
-
 
 def discover_claude_sessions(project_path: Path, claude_home: Path | None = None) -> list[AgentSession]:
     """Read only Claude Code sessions-index.json metadata for this project."""
@@ -121,7 +113,6 @@ def discover_claude_sessions(project_path: Path, claude_home: Path | None = None
             ))
     return found
 
-
 def discover_opencode_sessions(
     project_path: Path, roots: list[Path] | None = None
 ) -> list[AgentSession]:
@@ -153,7 +144,6 @@ def discover_opencode_sessions(
                 metadata=safe_metadata,
             ))
     return found
-
 
 class AgentSessionStore:
     """Persist and list metadata-only agent sessions for registered projects."""
