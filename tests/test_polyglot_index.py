@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 import subprocess
 import sys
 import types
@@ -17,7 +18,8 @@ class Point:
 
 class Node:
     def __init__(
-        self, kind: str, start: int, end: int, children=None, fields=None, text: bytes = b""
+        self, kind: str, start: int, end: int, children=None, fields=None,
+        text: bytes = b"", offset: int = 0
     ) -> None:
         self.type = kind
         self.start_point = Point(start)
@@ -53,12 +55,15 @@ def test_indexes_javascript_symbols_and_imports_without_real_parser_dependency(
     tmp_path: Path, monkeypatch
 ) -> None:
     root, project, db_path = make_project(tmp_path)
-    (root / "app.js").write_text("import React from 'react';\nfunction greet() {}\n", encoding="utf-8")
+    source_bytes = b"import React from 'react';\\nfunction greet() {}\\n"
+    (root / "app.js").write_bytes(source_bytes)
 
-    name = Node("identifier", 1, 1, text=b"greet")
+    name_offset = source_bytes.index(b"greet")
+    import_offset = source_bytes.index(b"'react'")
+    name = Node("identifier", 1, 1, text=b"greet", offset=name_offset)
     function = Node("function_declaration", 1, 1, [name], {"name": name})
-    source = Node("string", 0, 0, text=b"'react'")
-    import_node = Node("import_statement", 0, 0, [source], {"source": source})
+    imported_path = Node("string", 0, 0, text=b"'react'", offset=import_offset)
+    import_node = Node("import_statement", 0, 0, [imported_path], {"source": imported_path})
     root_node = Node("program", 0, 2, [import_node, function])
     fake_pack = types.ModuleType("tree_sitter_language_pack")
     fake_pack.get_parser = lambda _language: Parser(types.SimpleNamespace(root_node=root_node))
@@ -67,7 +72,7 @@ def test_indexes_javascript_symbols_and_imports_without_real_parser_dependency(
     summary = TreeSitterCodeIndex(db_path).index(project)
 
     assert summary["files_indexed"] == 1
-    with __import__("sqlite3").connect(db_path) as connection:
+    with sqlite3.connect(db_path) as connection:
         symbol = connection.execute(
             "SELECT name, kind, language FROM code_symbols WHERE path = 'app.js'"
         ).fetchone()
@@ -80,9 +85,11 @@ def test_indexes_javascript_symbols_and_imports_without_real_parser_dependency(
 
 def test_python_index_does_not_remove_other_language_rows(tmp_path: Path, monkeypatch) -> None:
     root, project, db_path = make_project(tmp_path)
-    (root / "app.js").write_text("function greet() {}\n", encoding="utf-8")
+    source_bytes = b"function greet() {}\\n"
+    (root / "app.js").write_bytes(source_bytes)
 
-    symbol = Node("identifier", 0, 0, text=b"greet")
+    name_offset = source_bytes.index(b"greet")
+    symbol = Node("identifier", 0, 0, text=b"greet", offset=name_offset)
     function = Node("function_declaration", 0, 0, [symbol], {"name": symbol})
     root_node = Node("program", 0, 0, [function])
     fake_pack = types.ModuleType("tree_sitter_language_pack")
@@ -92,7 +99,7 @@ def test_python_index_does_not_remove_other_language_rows(tmp_path: Path, monkey
     TreeSitterCodeIndex(db_path).index(project)
     PythonCodeIndex(db_path).index(project)
 
-    with __import__("sqlite3").connect(db_path) as connection:
+    with sqlite3.connect(db_path) as connection:
         count = connection.execute(
             "SELECT COUNT(*) FROM code_symbols WHERE path = 'app.js'"
         ).fetchone()[0]
