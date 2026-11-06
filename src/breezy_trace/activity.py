@@ -67,15 +67,19 @@ class FileActivityStore:
 
     def scan(self, project: Project) -> dict[str, int]:
         """Take one read-only Git status snapshot for a registered project."""
-        result = subprocess.run(
-            [
-                "git", "-C", project.path, "status", "--porcelain=v1", "-z",
-                "--untracked-files=all",
-            ],
-            capture_output=True,
-            check=False,
-            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
-        )
+        try:
+            result = subprocess.run(
+                [
+                    "git", "-C", project.path, "status", "--porcelain=v1", "-z",
+                    "--untracked-files=all",
+                ],
+                capture_output=True,
+                check=False,
+                timeout=12,
+                env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as error:
+            raise RuntimeError("Git status is unavailable or timed out for this project.") from error
         if result.returncode != 0:
             message = result.stderr.decode("utf-8", errors="replace").strip()
             raise RuntimeError(message or "Git status could not be read for this project.")
