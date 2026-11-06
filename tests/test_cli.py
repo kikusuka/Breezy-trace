@@ -21,3 +21,4 @@ def test_cli_help_lists_backup_and_inspect() -> None:
     assert "sessions" in result.stdout
     assert "branches" in result.stdout
     assert "activity" in result.stdout
+    assert "code" in result.stdout
