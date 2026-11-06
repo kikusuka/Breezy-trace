@@ -43,9 +43,7 @@ Header { background: #102D50; color: #83CCFF; }
 #content-title { color: #83CCFF; text-style: bold; height: auto; margin-bottom: 1; }
 #content { height: 1fr; overflow-y: auto; color: #E1F2FF; }
 #footer-note { height: auto; padding: 0 2 1 2; }
-#intro { layer: overlay; width: 100%; height: 100%; align: center middle; background: #071426; }
-#intro-copy { width: 100%; height: auto; content-align: center middle; text-align: center; color: #83CCFF; text-style: bold; }
-#intro-kicker { width: 100%; height: auto; content-align: center middle; text-align: center; color: #9ABBD6; }
+#intro-kicker { height: auto; color: #9ABBD6; text-style: italic; margin-top: 1; }
 """
 
 SCREEN_NAMES = {
@@ -135,6 +133,7 @@ class TraceApp(App[None]):
                 id="subtitle",
                 markup=False,
             )
+            yield Static("YOUR LOCAL PROJECT WORKSPACE", id="intro-kicker", markup=False)
         with Horizontal(id="nav"):
             yield Button("Home", id="nav-home", tooltip="Home · press 1")
             yield Button("Project", id="nav-overview", tooltip="Project overview · press 2")
@@ -159,9 +158,6 @@ class TraceApp(App[None]):
             markup=False,
         )
         yield Footer()
-        with Container(id="intro"):
-            yield Static("BREEZY TRACE", id="intro-copy", markup=False)
-            yield Static("", id="intro-kicker", markup=False)
 
     def on_mount(self) -> None:
         table = self.query_one("#project-table", DataTable)
@@ -178,7 +174,8 @@ class TraceApp(App[None]):
         else:
             self._render_view("home")
         self._show_intro_brand()
-        self.set_timer(0.9, self._show_intro_quote)
+        # The welcome sequence lives in the hero, never over the workspace.
+        self.set_timer(2.4, self._show_intro_quote)
 
     def on_resize(self, event) -> None:
         """Switch the workspace between columns and stacked panels as it resizes."""
@@ -231,40 +228,37 @@ class TraceApp(App[None]):
             content_panel.styles.min_height = 0
 
     def _set_intro(self, main: str, kicker: str = "") -> None:
-        self.query_one("#intro-copy", Static).update(main)
+        self.query_one("#subtitle", Static).update(main)
         self.query_one("#intro-kicker", Static).update(kicker)
 
     def _show_intro_brand(self) -> None:
-        self._set_intro("BREEZY TRACE")
+        self._set_intro(
+            "A clear trail through your projects, code, and development history.",
+            "YOUR LOCAL PROJECT WORKSPACE",
+        )
 
     def _show_intro_quote(self) -> None:
         self._set_intro(
-            "“Every project leaves a trail.\nMake yours meaningful.”",
+            "Every project leaves a trail. Make yours meaningful.",
             "A SMALL THOUGHT BEFORE YOU BEGIN",
         )
-        self.set_timer(0.9, self._show_intro_credit)
+        self.set_timer(2.8, self._show_intro_credit)
 
     def _show_intro_credit(self) -> None:
-        self._set_intro("FROM BREEZY LABS")
-        self.set_timer(0.82, self._show_intro_wordmark)
-
-    def _show_intro_wordmark(self) -> None:
-        wordmark = (
-            "╭──────────────╮\n"
-            "│   B  /  T    │\n"
-            "│   BREEZY     │\n"
-            "│   TRACE      │\n"
-            "╰──────────────╯"
+        self._set_intro(
+            "Your projects. Your context. Your next step.",
+            "BREEZY TRACE  ·  BY BREEZY LABS",
         )
-        self._set_intro(wordmark, "B R E E Z Y   T R A C E")
-        self.set_timer(1.05, self._finish_intro)
+        self.set_timer(2.8, self._finish_intro)
 
     def _finish_intro(self) -> None:
-        self.query_one("#intro").styles.animate("opacity", 0.0, duration=0.24)
-        self.set_timer(0.27, self._hide_intro)
+        self._set_intro(
+            "A clear trail through your projects, code, and development history."
+        )
 
     def _hide_intro(self) -> None:
-        self.query_one("#intro").display = False
+        # Compatibility for the skip-intro action: restore the normal hero copy.
+        self._finish_intro()
 
     def action_skip_intro(self) -> None:
         self._hide_intro()
