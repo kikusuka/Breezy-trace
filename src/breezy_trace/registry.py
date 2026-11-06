@@ -1,5 +1,6 @@
 """Local project registration and lookup."""
 
+import os
 import sqlite3
 import subprocess
 import uuid
@@ -29,12 +30,26 @@ class ProjectRegistry:
         if not candidate.exists():
             raise ProjectError(f"Path does not exist: {candidate}")
         try:
+            # Ignore inherited repository overrides. A parent shell or IDE may
+            # export GIT_DIR/GIT_WORK_TREE, making an unrelated folder appear
+            # to belong to that repository.
+            env = os.environ.copy()
+            for key in (
+                "GIT_DIR",
+                "GIT_WORK_TREE",
+                "GIT_COMMON_DIR",
+                "GIT_INDEX_FILE",
+                "GIT_OBJECT_DIRECTORY",
+                "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+            ):
+                env.pop(key, None)
             result = subprocess.run(
                 ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
                 capture_output=True,
                 text=True,
                 check=False,
                 timeout=12,
+                env=env,
             )
         except FileNotFoundError as error:
             raise ProjectError("Git is not installed or is not available on PATH.") from error

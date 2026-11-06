@@ -12,7 +12,7 @@ GIT_TIMEOUT_SECONDS = 5
 
 def _clean_terminal_text(value: str) -> str:
     """Replace terminal control characters while preserving line/tab layout."""
-    return re.sub(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]", "�", value)
+    return re.sub(r"[\x01-\x08\x0b-\x1e\x7f-\x9f]", "�", value)
 
 
 def _run(
@@ -53,11 +53,13 @@ def inspect_status(path: Path) -> GitStatus:
     branch_line = records[0] if records else "## unknown"
     branch_info = branch_line.removeprefix("## ")
     if branch_info.startswith("No commits yet on "):
-        branch = branch_info.removeprefix("No commits yet on ").strip()
+        branch = _clean_terminal_text(
+            branch_info.removeprefix("No commits yet on ").strip()
+        )
     elif branch_info.startswith("HEAD (no branch)"):
         branch = "detached HEAD"
     else:
-        branch = branch_info.split("...", 1)[0].split(" ", 1)[0]
+        branch = _clean_terminal_text(branch_info.split("...", 1)[0].split(" ", 1)[0])
 
     ahead = behind = staged = modified = untracked = 0
     if "[" in branch_line and "]" in branch_line:
@@ -116,7 +118,13 @@ def recent_commits(path: Path, limit: int = 5) -> list[dict[str, str]]:
     for line in command.stdout.splitlines():
         parts = line.split("\x1f", 2)
         if len(parts) == 3:
-            commits.append({"sha": parts[0], "date": parts[1], "subject": parts[2]})
+            commits.append(
+                {
+                    "sha": parts[0],
+                    "date": parts[1],
+                    "subject": _clean_terminal_text(parts[2]),
+                }
+            )
     return commits
 
 
@@ -148,8 +156,16 @@ def inspect_details(path: Path) -> dict[str, object]:
         "available": complete,
         "conflicts": conflicts,
         "stashes": len(stash.stdout.splitlines()) if stash and stash.returncode == 0 else 0,
-        "staged_diff": staged.stdout.strip() if staged and staged.returncode == 0 else "",
-        "unstaged_diff": unstaged.stdout.strip() if unstaged and unstaged.returncode == 0 else "",
+        "staged_diff": (
+            _clean_terminal_text(staged.stdout.strip())
+            if staged and staged.returncode == 0
+            else ""
+        ),
+        "unstaged_diff": (
+            _clean_terminal_text(unstaged.stdout.strip())
+            if unstaged and unstaged.returncode == 0
+            else ""
+        ),
     }
 
 
@@ -169,9 +185,13 @@ def branch_intelligence(path: Path) -> dict[str, object]:
         return result.stdout.strip() if result and result.returncode == 0 else None
 
     available = run("rev-parse", "--git-dir") is not None
-    current = run("branch", "--show-current") or None
+    current_value = run("branch", "--show-current") or None
+    current = _clean_terminal_text(current_value) if current_value else None
     detached = available and current is None
-    upstream = run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+    upstream_value = run(
+        "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"
+    )
+    upstream = _clean_terminal_text(upstream_value) if upstream_value else None
     ahead = behind = None
     unpushed: list[dict[str, str]] = []
     remote_only: list[dict[str, str]] = []
@@ -184,12 +204,20 @@ def branch_intelligence(path: Path) -> dict[str, object]:
         for destination, revision in (
             (unpushed, f"{upstream}..HEAD"), (remote_only, f"HEAD..{upstream}")
         ):
-            output = run("log", "-20", "--date=short", "--format=%h%x1f%ad%x1f%s", revision)
+            output = run(
+                "log", "-20", "--date=short", "--format=%h%x1f%ad%x1f%s", revision
+            )
             if output:
                 for line in output.splitlines():
                     parts = line.split(chr(31), 2)
                     if len(parts) == 3:
-                        destination.append({"sha": parts[0], "date": parts[1], "subject": parts[2]})
+                        destination.append(
+                            {
+                                "sha": parts[0],
+                                "date": parts[1],
+                                "subject": _clean_terminal_text(parts[2]),
+                            }
+                        )
 
     def refs(format_string: str, namespace: str) -> list[dict[str, str]]:
         output = run("for-each-ref", f"--format={format_string}", namespace)
@@ -198,7 +226,12 @@ def branch_intelligence(path: Path) -> dict[str, object]:
             for line in output.splitlines():
                 fields = line.split(maxsplit=1)
                 if fields and fields[0]:
-                    items.append({"name": fields[0], "sha": fields[1] if len(fields) > 1 else ""})
+                    items.append(
+                        {
+                            "name": _clean_terminal_text(fields[0]),
+                            "sha": fields[1] if len(fields) > 1 else "",
+                        }
+                    )
         return items
 
     local_branches = refs("%(refname:short) %(objectname:short)", "refs/heads")
@@ -208,7 +241,9 @@ def branch_intelligence(path: Path) -> dict[str, object]:
     for line in stash_output.splitlines():
         fields = line.split(chr(31), 1)
         if len(fields) == 2:
-            stashes.append({"ref": fields[0], "subject": fields[1]})
+            stashes.append(
+                {"ref": fields[0], "subject": _clean_terminal_text(fields[1])}
+            )
 
     return {
         "available": available and time.monotonic() < deadline,
