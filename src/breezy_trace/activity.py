@@ -4,6 +4,7 @@ This module records paths and Git status codes only. It never opens file content
 starts a watcher, or attributes changes to an agent session.
 """
 
+import os
 import subprocess
 import uuid
 from datetime import UTC, datetime
@@ -71,6 +72,7 @@ class FileActivityStore:
             ],
             capture_output=True,
             check=False,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
         )
         if result.returncode != 0:
             message = result.stderr.decode("utf-8", errors="replace").strip()
