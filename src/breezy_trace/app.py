@@ -147,6 +147,31 @@ class TraceApp(App[None]):
         workspace = self.query_one("#workspace", Container)
         project_list = self.query_one("#project-list", Vertical)
         content_panel = self.query_one("#content-panel", Vertical)
+        nav_labels = (
+            {
+                "nav-home": "Home",
+                "nav-overview": "Proj",
+                "nav-journal": "Note",
+                "nav-agents": "Agent",
+                "nav-git": "Git",
+                "nav-activity": "File",
+                "nav-code": "Code",
+                "nav-settings": "Set",
+            }
+            if width <= 80
+            else {
+                "nav-home": "Home",
+                "nav-overview": "Project",
+                "nav-journal": "Journal",
+                "nav-agents": "Agents",
+                "nav-git": "Git",
+                "nav-activity": "Activity",
+                "nav-code": "Code",
+                "nav-settings": "Settings",
+            }
+        )
+        for button_id, label in nav_labels.items():
+            self.query_one(f"#{button_id}", Button).label = label
         if width <= 80:
             workspace.styles.layout = "vertical"
             project_list.styles.width = "100%"
