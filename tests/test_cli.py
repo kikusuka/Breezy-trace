@@ -18,3 +18,4 @@ def test_cli_help_lists_backup_and_inspect() -> None:
     assert "backup" in result.stdout
     assert "inspect" in result.stdout
     assert "restore" in result.stdout
+    assert "sessions" in result.stdout

@@ -51,6 +51,8 @@ Then run `breezy-trace` from that registered repository to open its overview. Ru
 | `breezy-trace home` | Open the global project selector |
 | `breezy-trace status` | Show read-only Git status |
 | `breezy-trace inspect` | Show staged/unstaged diff summaries, merge conflicts, and stash count |
+| `breezy-trace sessions --sync` | Discover and index local Claude Code and OpenCode session metadata |
+| `breezy-trace sessions` | List previously indexed agent sessions |
 | `breezy-trace backup` | Create a consistent portable SQLite backup |
 | `breezy-trace backup --output ./trace-backup.sqlite3` | Choose a backup destination |
 | `breezy-trace restore ./trace-backup.sqlite3 --yes` | Restore local data after explicit confirmation |
@@ -84,7 +86,7 @@ python -m twine check dist/*
 
 ## Current scope
 
-The current release candidate includes project registration, a terminal dashboard, notes/tasks/decisions, Git working-tree status, staged and unstaged diff summaries, conflict and stash counts, recent local commit history, a resume summary, and portable SQLite backup/restore. Coding-agent session integrations, file-activity correlation, remote-provider APIs, and AST indexing are not implemented yet and are not claimed as available.
+The current release candidate includes project registration, a terminal dashboard, notes/tasks/decisions, Git working-tree status, staged and unstaged diff summaries, conflict and stash counts, recent local commit history, a resume summary, and portable SQLite backup/restore. Claude Code and OpenCode metadata-only session discovery is available through `breezy-trace sessions --sync`. Breezy Trace reads Claude Code `sessions-index.json` and OpenCode session metadata JSON only; it does not read transcript/message stores or persist prompt text, summaries, or session titles. Cursor, Windsurf, VS Code, Zed, file-activity correlation, remote-provider APIs, and AST indexing are not implemented yet and are not claimed as available.
 
 ## License
 

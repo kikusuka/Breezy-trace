@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from breezy_trace import __version__
+from breezy_trace.agents import AgentSessionStore
 from breezy_trace.app import TraceApp
 from breezy_trace.backup import backup_database, restore_database
 from breezy_trace.config import data_dir, database_path
@@ -57,6 +58,8 @@ def build_parser() -> argparse.ArgumentParser:
     done.add_argument("task_id")
 
     commands.add_parser("journal", help="Show recent notes for the current project.")
+    sessions = commands.add_parser("sessions", help="List detected coding-agent sessions for this project.")
+    sessions.add_argument("--sync", action="store_true", help="Discover local Claude Code and OpenCode session metadata first.")
 
     decision = commands.add_parser("decision", help="Record a project decision.")
     decision.add_argument("title")
@@ -105,6 +108,13 @@ def _print_resume(project, registry: ProjectRegistry) -> None:
     if not decisions:
         print("- No decisions recorded.")
 
+    sessions = AgentSessionStore(registry.db_path).list_sessions(project, limit=5)
+    print("\nRECENT AGENT SESSIONS")
+    for session in sessions:
+        print(f"- {session['provider']} {session['external_id']} ({session['started_at'] or 'unknown start'})")
+    if not sessions:
+        print("- No sessions indexed. Run: breezy-trace sessions --sync")
+
     commits = recent_commits(Path(project.path), limit=5)
     print("\nRECENT COMMITS (local history)")
     for commit in commits:
@@ -118,7 +128,7 @@ def main() -> None:
     args, remainder = parser.parse_known_args()
     registry = ProjectRegistry()
 
-    if args.command in {"note", "task", "tasks", "done", "journal", "decision"}:
+    if args.command in {"note", "task", "tasks", "done", "journal", "decision", "sessions"}:
         project = _current_project(parser, registry)
         store = JournalStore(registry.db_path)
         try:
@@ -138,6 +148,21 @@ def main() -> None:
                 else:
                     print("No open task matched that ID.", file=sys.stderr)
                     raise SystemExit(1)
+            elif args.command == "sessions":
+                session_store = AgentSessionStore(registry.db_path)
+                if args.sync:
+                    count = session_store.sync(project)
+                    print(f"Scanned local agent indexes; {count} session records inserted or refreshed.")
+                records = session_store.list_sessions(project)
+                if not records:
+                    print("No agent sessions found. Run: breezy-trace sessions --sync")
+                for record in records:
+                    print(f"- {record['provider']}  {record['external_id']}  {record['started_at'] or 'unknown start'}")
+                    metadata = record["metadata"]
+                    if metadata.get("git_branch"):
+                        print(f"  Branch: {metadata['git_branch']}")
+                    if metadata.get("message_count") is not None:
+                        print(f"  Messages: {metadata['message_count']}")
             elif args.command == "journal":
                 entries = store.list_entries(project)
                 if not entries:
