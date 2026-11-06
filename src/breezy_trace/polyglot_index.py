@@ -26,7 +26,7 @@ LANGUAGE_EXTENSIONS = {
     "rust": {".rs"},
     "go": {".go"},
     "java": {".java"},
-    "c_sharp": {".cs"},
+    "csharp": {".cs"},
     "c": {".c", ".h"},
     "cpp": {".cc", ".cpp", ".cxx", ".hpp", ".hh", ".hxx"},
     "ruby": {".rb"},
