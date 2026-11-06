@@ -70,13 +70,16 @@ class _SymbolVisitor(ast.NodeVisitor):
 
 
 def _git_python_paths(root: Path) -> list[str]:
-    result = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"],
-        capture_output=True,
-        check=False,
-        timeout=30,
-        env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
-    )
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"],
+            capture_output=True,
+            check=False,
+            timeout=30,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as error:
+        raise RuntimeError("Git file discovery is unavailable or timed out.") from error
     if result.returncode != 0:
         reason = result.stderr.decode("utf-8", errors="replace").strip()
         raise RuntimeError(reason or "Could not list project files with Git.")
