@@ -172,7 +172,7 @@ def read_source_file(root: Path, relative: str) -> bytes | None:
         with path.open("rb") as stream:
             raw = stream.read(MAX_FILE_BYTES + 1)
         return raw if len(raw) <= MAX_FILE_BYTES else None
-    except OSError:
+    except (OSError, RuntimeError):
         return None
 
 
