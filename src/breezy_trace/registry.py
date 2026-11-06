@@ -3,6 +3,7 @@
 import sqlite3
 import subprocess
 import uuid
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -33,9 +34,12 @@ class ProjectRegistry:
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=12,
             )
         except FileNotFoundError as error:
             raise ProjectError("Git is not installed or is not available on PATH.") from error
+        except subprocess.TimeoutExpired as error:
+            raise ProjectError("Git repository discovery timed out.") from error
         if result.returncode != 0:
             raise ProjectError(f"Not inside a Git repository: {candidate}")
         return Path(result.stdout.strip()).resolve()
@@ -52,7 +56,7 @@ class ProjectRegistry:
         if not project.name:
             raise ProjectError("Project name cannot be empty.")
         try:
-            with self._connect() as connection:
+            with closing(self._connect()) as connection, connection:
                 connection.execute(
                     """
                     INSERT INTO projects (id, name, path, registered_at)
@@ -65,7 +69,7 @@ class ProjectRegistry:
         return project
 
     def unregister(self, name_or_path: str) -> bool:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             cursor = connection.execute(
                 "DELETE FROM projects WHERE name = ? OR path = ?",
                 (name_or_path, str(Path(name_or_path).expanduser().resolve())),
@@ -73,7 +77,7 @@ class ProjectRegistry:
             return cursor.rowcount > 0
 
     def list_projects(self) -> list[Project]:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT id, name, path, registered_at, last_opened_at
@@ -87,7 +91,7 @@ class ProjectRegistry:
             root = self.resolve_git_root(path)
         except ProjectError:
             return None
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             row = connection.execute(
                 """
                 SELECT id, name, path, registered_at, last_opened_at
@@ -99,7 +103,7 @@ class ProjectRegistry:
 
     def mark_opened(self, project_id: str) -> None:
         now = datetime.now(UTC).isoformat()
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             connection.execute(
                 "UPDATE projects SET last_opened_at = ? WHERE id = ?",
                 (now, project_id),
