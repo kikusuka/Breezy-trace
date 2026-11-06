@@ -102,7 +102,6 @@ def test_agent_metadata_rejects_oversized_json_and_invalid_timestamps(tmp_path: 
     assert _iso(10**100) is None
 
 
-
 def test_agent_metadata_path_limit_is_deterministic(tmp_path: Path, monkeypatch) -> None:
     import breezy_trace.agents as agents_module
 
@@ -124,8 +123,9 @@ def test_agent_metadata_reader_rejects_symlinks_and_deep_json(tmp_path: Path) ->
     try:
         link.symlink_to(target)
     except OSError:
-        return
-    assert _read_json(link) is None
+        pass
+    else:
+        assert _read_json(link) is None
 
     deeply_nested = tmp_path / "nested.json"
     deeply_nested.write_text("[" * 2_000 + "0" + "]" * 2_000, encoding="utf-8")
