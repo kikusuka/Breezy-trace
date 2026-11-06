@@ -2,11 +2,11 @@
 
 import sqlite3
 import uuid
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
 from breezy_trace.config import database_path
-from contextlib import closing
 
 from breezy_trace.database import connect
 from breezy_trace.models import Project
