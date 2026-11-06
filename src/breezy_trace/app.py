@@ -491,7 +491,7 @@ class TraceApp(App[None]):
         return "\n".join(lines)
 
     def _settings(self, project: Project) -> str:
-        return "\\n".join([
+        return "\n".join([
             "PROJECT SETTINGS",
             "",
             f"Active project: {project.name}",
