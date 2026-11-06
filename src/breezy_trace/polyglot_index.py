@@ -62,6 +62,7 @@ IMPORT_NODES = {
     "using_declaration",
 }
 
+
 def _git_paths(root: Path) -> list[str]:
     try:
         result = subprocess.run(
@@ -83,8 +84,10 @@ def _git_paths(root: Path) -> list[str]:
         in {ext for extensions in LANGUAGE_EXTENSIONS.values() for ext in extensions}
     )
 
+
 def _node_text(node: Any, source: bytes) -> str:
     return source[node.start_byte:node.end_byte].decode("utf-8", errors="replace").strip()
+
 
 def _node_name(node: Any, source: bytes) -> str:
     named = node.child_by_field_name("name")
@@ -94,6 +97,7 @@ def _node_name(node: Any, source: bytes) -> str:
         if child.type in {"identifier", "type_identifier", "field_identifier", "operator"}:
             return _node_text(child, source).strip("`'")
     return ""
+
 
 def _extract(tree: Any, source: bytes) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     symbols: list[dict[str, Any]] = []
@@ -124,6 +128,7 @@ def _extract(tree: Any, source: bytes) -> tuple[list[dict[str, Any]], list[dict[
 
     walk(tree.root_node, ())
     return symbols, imports
+
 
 class TreeSitterCodeIndex:
     """Index supported non-Python languages using the optional grammar pack."""
