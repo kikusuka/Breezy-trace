@@ -176,3 +176,16 @@ def test_git_path_discovery_keeps_nul_delimited_filenames(tmp_path: Path) -> Non
     unusual.write_text("def unusual_name():\n    pass\n", encoding="utf-8")
 
     assert code_index_module.git_source_paths(root, {".py"}) == ["line\nbreak.py"]
+
+
+
+def test_source_reader_enforces_byte_limit_without_full_read(tmp_path: Path, monkeypatch) -> None:
+    import breezy_trace.code_index as code_index_module
+
+    root, _project, _db_path = make_project(tmp_path)
+    monkeypatch.setattr(code_index_module, "MAX_FILE_BYTES", 4)
+    (root / "small.py").write_bytes(b"1234")
+    (root / "large.py").write_bytes(b"12345")
+
+    assert code_index_module.read_source_file(root, "small.py") == b"1234"
+    assert code_index_module.read_source_file(root, "large.py") is None
