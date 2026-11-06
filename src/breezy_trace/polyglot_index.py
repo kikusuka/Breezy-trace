@@ -200,7 +200,7 @@ class TreeSitterCodeIndex:
                 parse_error = "syntax errors detected" if tree.root_node.has_error else None
                 if parse_error:
                     syntax_errors += 1
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 - parser download errors are package-specific.
                 symbols, imports = [], []
                 parse_error = f"parser error: {error}"
                 syntax_errors += 1
