@@ -31,7 +31,7 @@ Header { background: #102D50; color: #83CCFF; }
 #brand { color: #83CCFF; text-style: bold; }
 #subtitle, #footer-note { color: #9ABBD6; }
 #nav { height: 4; margin: 1 1 0 1; padding: 0 1; border: round #234467; align: center middle; }
-#nav Button { min-width: 6; width: 1fr; height: 2; margin: 0; padding: 0 1; border: none; background: #102D50; color: #83CCFF; }
+#nav Button { min-width: 3; width: 1fr; height: 2; margin: 0; padding: 0; border: none; background: #102D50; color: #83CCFF; }
 #nav Button:hover { background: #1D4F7A; color: #E1F2FF; }
 #nav Button:focus { border: tall #83CCFF; }
 #nav Button.active { background: #1D4F7A; color: #E1F2FF; text-style: bold; }
