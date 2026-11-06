@@ -5,6 +5,7 @@ operations are explicit, local actions; no background watcher or network call
 is started by opening the application.
 """
 
+from contextlib import closing
 from pathlib import Path
 from typing import ClassVar
 
