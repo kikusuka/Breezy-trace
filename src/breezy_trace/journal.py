@@ -7,14 +7,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from breezy_trace.config import database_path
-
 from breezy_trace.database import connect
 from breezy_trace.models import Project
 
-
 def _now() -> str:
     return datetime.now(UTC).isoformat()
-
 
 class JournalStore:
     """Persist human-authored project context in the local SQLite database."""
