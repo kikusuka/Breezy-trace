@@ -11,7 +11,7 @@ from typing import ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Vertical
 from textual.widgets import DataTable, Footer, Header, Static
 
 from breezy_trace.activity import FileActivityStore
@@ -57,6 +57,7 @@ Header {
     content-align: center middle;
 }
 #workspace {
+    layout: horizontal;
     height: 1fr;
     margin: 1 1 0 1;
 }
@@ -66,35 +67,6 @@ Header {
     height: 1fr;
 }
 
-@media (max-width: 80) {
-    #workspace {
-        layout: vertical;
-    }
-    #project-list {
-        width: 100%;
-        height: 12;
-        min-height: 7;
-    }
-    #content-panel {
-        width: 100%;
-        margin-left: 0;
-        min-height: 12;
-    }
-}
-
-@media (max-width: 52) {
-    #hero {
-        padding: 0 1;
-    }
-    #nav {
-        height: auto;
-        min-height: 3;
-        content-align: left middle;
-    }
-    #content-panel {
-        padding: 1;
-    }
-}
 #project-table {
     height: 1fr;
     border: round #334155;
@@ -197,7 +169,7 @@ class TraceApp(App[None]):
             id="nav",
             markup=False,
         )
-        with Horizontal(id="workspace"):
+        with Container(id="workspace"):
             with Vertical(id="project-list"):
                 yield Static("YOUR PROJECTS", id="content-title", markup=False)
                 yield DataTable(id="project-table", cursor_type="row")
@@ -217,6 +189,7 @@ class TraceApp(App[None]):
     def on_mount(self) -> None:
         table = self.query_one("#project-table", DataTable)
         table.add_columns("PROJECT", "BRANCH")
+        self._apply_responsive_layout(self.size.width)
         projects = self.registry.list_projects()
         for item in projects:
             # Avoid spawning one Git process per registered project during startup.
@@ -229,6 +202,31 @@ class TraceApp(App[None]):
             self._render_view("home")
         self._show_intro_brand()
         self.set_timer(0.62, self._show_intro_quote)
+
+    def on_resize(self, event) -> None:
+        """Switch the workspace between columns and stacked panels as it resizes."""
+        self._apply_responsive_layout(event.size.width)
+
+    def _apply_responsive_layout(self, width: int) -> None:
+        workspace = self.query_one("#workspace", Container)
+        project_list = self.query_one("#project-list", Vertical)
+        content_panel = self.query_one("#content-panel", Vertical)
+        if width <= 80:
+            workspace.styles.layout = "vertical"
+            project_list.styles.width = "100%"
+            project_list.styles.height = 12
+            project_list.styles.min_height = 7
+            content_panel.styles.width = "100%"
+            content_panel.styles.margin_left = 0
+            content_panel.styles.min_height = 12
+        else:
+            workspace.styles.layout = "horizontal"
+            project_list.styles.width = "34%"
+            project_list.styles.height = "1fr"
+            project_list.styles.min_height = 0
+            content_panel.styles.width = "1fr"
+            content_panel.styles.margin_left = 1
+            content_panel.styles.min_height = 0
 
     def _set_intro(self, main: str, kicker: str = "") -> None:
         self.query_one("#intro-copy", Static).update(main)
