@@ -1,4 +1,7 @@
+import os
 import subprocess
+
+import pytest
 from pathlib import Path
 
 from breezy_trace.git import inspect_status, recent_commits
@@ -94,6 +97,7 @@ def test_git_status_handles_missing_git(monkeypatch, tmp_path: Path) -> None:
 
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows filenames cannot contain newlines")
 def test_git_status_counts_newline_filename_as_one_path(tmp_path: Path) -> None:
     subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
     (tmp_path / "line\nbreak.txt").write_text("hello", encoding="utf-8")
