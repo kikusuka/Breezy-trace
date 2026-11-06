@@ -12,7 +12,7 @@ GIT_TIMEOUT_SECONDS = 5
 
 def _clean_terminal_text(value: str) -> str:
     """Replace terminal control characters while preserving line/tab layout."""
-    return re.sub(r"[\\x00-\\x08\\x0b-\\x1f\\x7f-\\x9f]", "�", value)
+    return re.sub(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]", "�", value)
 
 
 def _run(
@@ -49,7 +49,7 @@ def inspect_status(path: Path) -> GitStatus:
 
     # Porcelain -z uses NUL-delimited path records, so filenames containing
     # newlines cannot be mistaken for additional changed files.
-    records = command.stdout.split("\\0")
+    records = command.stdout.split("\0")
     branch_line = records[0] if records else "## unknown"
     branch_info = branch_line.removeprefix("## ")
     if branch_info.startswith("No commits yet on "):
