@@ -44,3 +44,63 @@ def test_backup_rejects_same_path(tmp_path: Path) -> None:
     make_database(db)
     with pytest.raises(ValueError, match="differ"):
         backup_database(db, db)
+
+
+def test_backup_includes_committed_wal_data(tmp_path: Path) -> None:
+    live = tmp_path / "live.sqlite3"
+    snapshot = tmp_path / "backup.sqlite3"
+    make_database(live)
+
+    writer = sqlite3.connect(live)
+    try:
+        writer.execute("PRAGMA journal_mode = WAL")
+        writer.execute(
+            "INSERT INTO journal_entries "
+            "(id, project_id, title, body, entry_type, created_at, updated_at) "
+            "SELECT 'wal-note', id, 'WAL note', 'committed in WAL', 'note', "
+            "datetime('now'), datetime('now') FROM projects LIMIT 1"
+        )
+        writer.commit()
+        backup_database(live, snapshot)
+    finally:
+        writer.close()
+
+    restored = tmp_path / "restored.sqlite3"
+    restore_database(snapshot, restored)
+    with sqlite3.connect(restored) as connection:
+        body = connection.execute(
+            "SELECT body FROM journal_entries WHERE id = 'wal-note'"
+        ).fetchone()[0]
+    assert body == "committed in WAL"
+
+
+def test_failed_restore_does_not_replace_existing_destination(tmp_path: Path) -> None:
+    invalid = tmp_path / "invalid.sqlite3"
+    sqlite3.connect(invalid).close()
+    destination = tmp_path / "live.sqlite3"
+    original = b"existing destination must survive"
+    destination.write_bytes(original)
+
+    with pytest.raises(ValueError):
+        restore_database(invalid, destination)
+
+    assert destination.read_bytes() == original
+
+
+def test_backup_cleans_temporary_file_when_replace_fails(tmp_path: Path, monkeypatch) -> None:
+    import breezy_trace.backup as backup_module
+
+    live = tmp_path / "live.sqlite3"
+    destination = tmp_path / "backup.sqlite3"
+    make_database(live)
+    destination.write_bytes(b"previous backup")
+
+    def fail_replace(_source, _destination):
+        raise OSError("simulated atomic replace failure")
+
+    monkeypatch.setattr(backup_module.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="simulated"):
+        backup_database(live, destination)
+
+    assert destination.read_bytes() == b"previous backup"
+    assert not (tmp_path / "backup.sqlite3.tmp").exists()
