@@ -122,16 +122,22 @@ def recent_commits(path: Path, limit: int = 5) -> list[dict[str, str]]:
 
 def inspect_details(path: Path) -> dict[str, object]:
     """Return additional read-only Git signals for a project overview."""
-    status = _run(path, "status", "--porcelain=v1", "--untracked-files=all")
+    status = _run(path, "status", "--porcelain=v1", "-z", "--untracked-files=all")
     if status is None or status.returncode != 0:
         return {
             "available": False, "conflicts": 0, "stashes": 0,
             "staged_diff": "", "unstaged_diff": "",
         }
-    conflicts = sum(
-        1 for line in status.stdout.splitlines()
-        if len(line) >= 2 and ("U" in line[:2] or line[:2] in {"AA", "DD"})
-    )
+    records = status.stdout.split("\0")
+    conflicts = 0
+    index = 0
+    while index < len(records):
+        record = records[index]
+        index += 1
+        if len(record) >= 2 and ("U" in record[:2] or record[:2] in {"AA", "DD"}):
+            conflicts += 1
+        if len(record) >= 2 and ("R" in record[:2] or "C" in record[:2]):
+            index += 1
     stash = _run(path, "stash", "list")
     staged = _run(path, "diff", "--cached", "--stat")
     unstaged = _run(path, "diff", "--stat")
