@@ -25,110 +25,26 @@ from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS
 from breezy_trace.registry import ProjectRegistry
 
 THEME_CSS = """
-Screen {
-    layers: base overlay;
-    background: #0F172A;
-    color: #E2E8F0;
-}
-Header {
-    background: #111F35;
-    color: #BAE6FD;
-}
-#hero {
-    height: auto;
-    padding: 1 2;
-    margin: 1 1 0 1;
-    border: round #334155;
-    background: #111F35;
-}
-#brand {
-    color: #BAE6FD;
-    text-style: bold;
-}
-#subtitle, #footer-note {
-    color: #94A3B8;
-}
-#nav {
-    height: 4;
-    margin: 1 1 0 1;
-    padding: 0 1;
-    border: round #334155;
-    align: center middle;
-}
-#nav Button {
-    min-width: 3;
-    width: 1fr;
-    height: 2;
-    margin: 0;
-    padding: 0;
-    border: none;
-    background: #1E293B;
-    color: #BAE6FD;
-}
-#nav Button:hover {
-    background: #164E63;
-    color: #F0F9FF;
-}
-#nav Button:focus {
-    border: tall #38BDF8;
-}
-#workspace {
-    layout: horizontal;
-    height: 1fr;
-    margin: 1 1 0 1;
-}
-#project-list {
-    width: 34%;
-    min-width: 18;
-    height: 1fr;
-}
-
-#project-table {
-    height: 1fr;
-    border: round #334155;
-}
-#content-panel {
-    width: 1fr;
-    border: round #334155;
-    padding: 1 2;
-    margin-left: 1;
-}
-#content-title {
-    color: #38BDF8;
-    text-style: bold;
-    height: auto;
-    margin-bottom: 1;
-}
-#content {
-    height: 1fr;
-    overflow-y: auto;
-}
-#footer-note {
-    height: auto;
-    padding: 0 2 1 2;
-}
-#intro {
-    layer: overlay;
-    width: 100%;
-    height: 100%;
-    align: center middle;
-    background: #0F172A;
-}
-#intro-copy {
-    width: 100%;
-    height: auto;
-    content-align: center middle;
-    text-align: center;
-    color: #BAE6FD;
-    text-style: bold;
-}
-#intro-kicker {
-    width: 100%;
-    height: auto;
-    content-align: center middle;
-    text-align: center;
-    color: #38BDF8;
-}
+Screen { layers: base overlay; background: #071426; color: #E1F2FF; }
+Header { background: #102D50; color: #83CCFF; }
+#hero { height: auto; padding: 1 2; margin: 1 1 0 1; border: round #234467; background: #102D50; }
+#brand { color: #83CCFF; text-style: bold; }
+#subtitle, #footer-note { color: #9ABBD6; }
+#nav { height: 4; margin: 1 1 0 1; padding: 0 1; border: round #234467; align: center middle; }
+#nav Button { min-width: 3; width: 1fr; height: 2; margin: 0; padding: 0; border: none; background: #102D50; color: #83CCFF; }
+#nav Button:hover { background: #1D4F7A; color: #E1F2FF; }
+#nav Button:focus { border: none; background: #1D4F7A; color: #E1F2FF; }
+#nav Button.active { background: #1D4F7A; color: #E1F2FF; text-style: bold; }
+#workspace { layout: horizontal; height: 1fr; margin: 1 1 0 1; }
+#project-list { width: 34%; min-width: 18; height: 1fr; }
+#project-table { height: 1fr; border: round #234467; }
+#content-panel { width: 1fr; border: round #234467; padding: 1 2; margin-left: 1; background: #0B1E35; }
+#content-title { color: #83CCFF; text-style: bold; height: auto; margin-bottom: 1; }
+#content { height: 1fr; overflow-y: auto; color: #E1F2FF; }
+#footer-note { height: auto; padding: 0 2 1 2; }
+#intro { layer: overlay; width: 100%; height: 100%; align: center middle; background: #071426; }
+#intro-copy { width: 100%; height: auto; content-align: center middle; text-align: center; color: #83CCFF; text-style: bold; }
+#intro-kicker { width: 100%; height: auto; content-align: center middle; text-align: center; color: #9ABBD6; }
 """
 
 SCREEN_NAMES = {
@@ -181,14 +97,14 @@ class TraceApp(App[None]):
                 markup=False,
             )
         with Horizontal(id="nav"):
-            yield Button("⌂", id="nav-home", tooltip="Home · press 1")
-            yield Button("▦", id="nav-overview", tooltip="Project overview · press 2")
-            yield Button("✎", id="nav-journal", tooltip="Journal · press 3")
-            yield Button("◉", id="nav-agents", tooltip="Agent sessions · press 4")
-            yield Button("⑂", id="nav-git", tooltip="Git intelligence · press 5")
-            yield Button("◷", id="nav-activity", tooltip="File activity · press 6")
-            yield Button("⌘", id="nav-code", tooltip="Code intelligence · press 7")
-            yield Button("⚙", id="nav-settings", tooltip="Settings · press 8")
+            yield Button("Home", id="nav-home", tooltip="Home · press 1")
+            yield Button("Project", id="nav-overview", tooltip="Project overview · press 2")
+            yield Button("Journal", id="nav-journal", tooltip="Journal · press 3")
+            yield Button("Agents", id="nav-agents", tooltip="Agent sessions · press 4")
+            yield Button("Git", id="nav-git", tooltip="Git intelligence · press 5")
+            yield Button("Activity", id="nav-activity", tooltip="File activity · press 6")
+            yield Button("Code", id="nav-code", tooltip="Code intelligence · press 7")
+            yield Button("Settings", id="nav-settings", tooltip="Settings · press 8")
         with Container(id="workspace"):
             with Vertical(id="project-list"):
                 yield Static("YOUR PROJECTS", id="content-title", markup=False)
@@ -197,7 +113,7 @@ class TraceApp(App[None]):
                 yield Static("HOME", id="view-title", markup=False)
                 yield Static(id="content", markup=False)
         yield Static(
-            "LOCAL-FIRST  ·  GIT-NATIVE  ·  NO AI REQUIRED  ·  NO TELEMETRY",
+            "1–8 NAVIGATE  ·  CTRL+P PROJECTS  ·  Q QUIT",
             id="footer-note",
             markup=False,
         )
@@ -231,6 +147,31 @@ class TraceApp(App[None]):
         workspace = self.query_one("#workspace", Container)
         project_list = self.query_one("#project-list", Vertical)
         content_panel = self.query_one("#content-panel", Vertical)
+        nav_labels = (
+            {
+                "nav-home": "Home",
+                "nav-overview": "Proj",
+                "nav-journal": "Note",
+                "nav-agents": "Agent",
+                "nav-git": "Git",
+                "nav-activity": "File",
+                "nav-code": "Code",
+                "nav-settings": "Set",
+            }
+            if width <= 80
+            else {
+                "nav-home": "Home",
+                "nav-overview": "Project",
+                "nav-journal": "Journal",
+                "nav-agents": "Agents",
+                "nav-git": "Git",
+                "nav-activity": "Activity",
+                "nav-code": "Code",
+                "nav-settings": "Settings",
+            }
+        )
+        for button_id, label in nav_labels.items():
+            self.query_one(f"#{button_id}", Button).label = label
         if width <= 80:
             workspace.styles.layout = "vertical"
             project_list.styles.width = "100%"
@@ -268,11 +209,11 @@ class TraceApp(App[None]):
 
     def _show_intro_wordmark(self) -> None:
         wordmark = (
-            "█████  ████   ████  ████  ████\n"
-            "  █    █   █  █  █  █     █\n"
-            "  █    ████   ████  █     ███\n"
-            "  █    █  █   █  █  █     █\n"
-            "  █    █   █  █  █  ████  ████"
+            "╭──────────────╮\n"
+            "│   B  /  T    │\n"
+            "│   BREEZY     │\n"
+            "│   TRACE      │\n"
+            "╰──────────────╯"
         )
         self._set_intro(wordmark, "B R E E Z Y   T R A C E")
         self.set_timer(1.05, self._finish_intro)
@@ -319,6 +260,9 @@ class TraceApp(App[None]):
         self.current_view = title.lower()
         self.query_one("#view-title", Static).update(title.upper())
         self.query_one("#content", Static).update(body)
+        for button in self.query("#nav Button"):
+            button.remove_class("active")
+        self.query_one(f"#nav-{self.current_view}", Button).add_class("active")
 
     def _render_view(self, view: str) -> None:
         if view == "home":
@@ -327,23 +271,41 @@ class TraceApp(App[None]):
                 body = (
                     "WELCOME TO BREEZY TRACE\n\n"
                     "Your registered projects will appear in the list.\n\n"
-                    "From a Git repository, run:\n"
-                    "  breezy-trace register .\n\n"
-                    "Then launch breezy-trace to return here."
+                    "GET STARTED\n"
+                    "From a Git repository, run: breezy-trace register .\n"
+                    "Then launch breezy-trace from that repository.\n\n"
+                    "WHAT'S INSIDE\n"
+                    "Project overview  ·  Git status, diffs and recent commits\n"
+                    "Journal           ·  Notes, tasks and decisions\n"
+                    "Agent sessions    ·  Claude Code and OpenCode metadata\n"
+                    "Git intelligence  ·  Branches, divergence and stashes\n"
+                    "File activity     ·  Explicit change-history snapshots\n"
+                    "Code intelligence ·  Symbols, imports and call sites\n"
+                    "Settings          ·  Privacy, storage, backup and restore\n\n"
+                    "CLI tools after registration: resume, inspect, branches,\n"
+                    "sessions --sync, activity scan, code index/search/imports/calls,\n"
+                    "backup, restore, notes, tasks and decisions."
                 )
             else:
                 body = (
                     "YOUR DEVELOPMENT WORKSPACE\n\n"
                     f"{len(projects)} registered project(s).\n\n"
                     "Select a project from the left to open its overview.\n\n"
-                    "WHAT YOU CAN EXPLORE\n"
-                    "Project overview     Git state and recent commits\n"
-                    "Journal              Notes, tasks and decisions\n"
-                    "Agent sessions       Local Claude Code and OpenCode metadata\n"
-                    "Git intelligence     Branches, divergence and stashes\n"
-                    "File activity        Explicit snapshots of changed paths\n"
-                    "Code intelligence    Indexed symbols and imports\n\n"
-                    "Use number keys 1–8 to navigate."
+                    "FEATURE DIRECTORY\n"
+                    "Project overview     Git status, diffs, conflicts, stashes, commits\n"
+                    "Journal              Notes, open/completed tasks, decisions\n"
+                    "Agent sessions       Claude Code + OpenCode metadata (no transcripts)\n"
+                    "Git intelligence     Branches, upstream divergence, cached refs\n"
+                    "File activity        Explicit path/status history snapshots\n"
+                    "Code intelligence    Symbols, imports, language support, call sites\n"
+                    "Settings             Privacy boundaries, storage, backup and restore\n\n"
+                    "QUICK COMMANDS (run inside this project)\n"
+                    "resume · status · inspect · branches\n"
+                    "note · task · tasks · done · decision · journal\n"
+                    "sessions --sync · activity scan · activity log\n"
+                    "code index · code languages · code search · code imports · code calls\n"
+                    "backup · restore FILE --yes\n\n"
+                    "Navigate with the buttons or number keys 1–8. Ctrl+P focuses projects."
                 )
             self._render("Home", body)
             return
@@ -422,7 +384,7 @@ class TraceApp(App[None]):
         lines.extend(f"• {row['title']}: {row['decision']}" for row in decisions)
         if not decisions:
             lines.append("No decisions recorded.")
-        lines.extend(["", "CLI: note TITLE · task TITLE · decision TITLE DECISION · tasks · done TASK_ID"])
+        lines.extend(["", "CLI: note TITLE · task TITLE · tasks [--all] · done TASK_ID", "CLI: decision TITLE DECISION · journal · resume"])
         return "\n".join(lines)
 
     def _agents(self, project: Project) -> str:
@@ -442,7 +404,7 @@ class TraceApp(App[None]):
         if not sessions:
             lines.append("No sessions indexed yet.")
             lines.append("Run: breezy-trace sessions --sync")
-        lines.extend(["", "Supported discovery: Claude Code and OpenCode."])
+        lines.extend(["", "Supported discovery: Claude Code and OpenCode.", "Refresh metadata: breezy-trace sessions --sync"])
         return "\n".join(lines)
 
     def _git(self, project: Project) -> str:
@@ -486,7 +448,7 @@ class TraceApp(App[None]):
                 "No activity snapshots recorded.",
                 "Run: breezy-trace activity scan",
             ])
-        lines.extend(["", "Scanning is explicit; no background watcher is running."])
+        lines.extend(["", "Commands: breezy-trace activity scan · breezy-trace activity log", "Scanning is explicit; no background watcher is running."])
         return "\n".join(lines)
 
     def _code(self, project: Project) -> str:
@@ -525,27 +487,21 @@ class TraceApp(App[None]):
             lines.append("No imports indexed.")
         lines.extend(["", "PARSER SUPPORT"])
         lines.extend(f"• {language}" for language in ["python", *sorted(LANGUAGE_EXTENSIONS)])
-        lines.extend(["", "Search with: breezy-trace code search QUERY"])
+        lines.extend(["", "COMMANDS", "breezy-trace code index", "breezy-trace code languages", "breezy-trace code search QUERY", "breezy-trace code imports [QUERY]", "breezy-trace code calls [QUERY]"])
         return "\n".join(lines)
 
     def _settings(self, project: Project) -> str:
         return "\n".join([
-            "LOCAL SETTINGS & PRIVACY",
+            "PROJECT SETTINGS",
             "",
             f"Active project: {project.name}",
             f"Project path: {project.path}",
-            f"Local database: {database_path()}",
-            "",
-            "PRIVACY BOUNDARIES",
-            "• Project metadata and journal data stay in your local SQLite database.",
-            "• Git inspection is read-only; Breezy Trace never fetches or changes branches.",
-            "• Agent integrations store allowlisted session metadata, not transcripts.",
-            "• Code indexing stores symbols, imports, paths and hashes, not source text.",
-            "• No telemetry or mandatory AI provider.",
+            f"Database: {database_path()}",
             "",
             "BACKUP & RESTORE",
             "Create a portable backup: breezy-trace backup",
             "Restore explicitly: breezy-trace restore FILE --yes",
+            "Inspect this project: breezy-trace status · inspect · branches · resume",
             "",
             "INTEGRATIONS",
             "Claude Code and OpenCode metadata discovery are available.",
