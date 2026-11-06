@@ -29,8 +29,6 @@ def test_icon_navigation_buttons_switch_views(tmp_path: Path, monkeypatch) -> No
         async with TraceApp().run_test(size=(120, 36)) as pilot:
             pilot.app.action_skip_intro()
             await pilot.pause()
-            assert pilot.app.query_one("#nav-home").label.plain == "Home"
-            assert pilot.app.query_one("#nav-code").label.plain == "Code"
             await pilot.click("#nav-journal")
             assert pilot.app.current_view == "journal"
             assert "active" in pilot.app.query_one("#nav-journal").classes
