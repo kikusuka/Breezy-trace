@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.5", "build>=1.2", "twine>=5.0"]
+code = ["tree-sitter-language-pack>=1.24,<2"]
 
 [project.scripts]
 breezy-trace = "breezy_trace.cli:main"
