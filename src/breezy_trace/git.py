@@ -120,3 +120,70 @@ def inspect_details(path: Path) -> dict[str, object]:
         "staged_diff": staged.stdout.strip(),
         "unstaged_diff": unstaged.stdout.strip(),
     }
+
+
+def branch_intelligence(path: Path) -> dict[str, object]:
+    """Inspect local branches and cached upstream refs without contacting remotes.
+
+    Remote-tracking refs are whatever the user's last fetch left locally; this
+    function never fetches, pulls, pushes, or changes repository state.
+    """
+    def run(*args: str) -> str | None:
+        result = subprocess.run(
+            ["git", "-C", str(path), *args],
+            capture_output=True, text=True, check=False,
+        )
+        return result.stdout.strip() if result.returncode == 0 else None
+
+    current = run("branch", "--show-current") or None
+    detached = current is None
+    upstream = run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+    ahead = behind = None
+    unpushed: list[dict[str, str]] = []
+    remote_only: list[dict[str, str]] = []
+    if upstream:
+        counts = run("rev-list", "--left-right", "--count", f"HEAD...{upstream}")
+        if counts:
+            values = counts.split()
+            if len(values) == 2 and all(value.isdigit() for value in values):
+                ahead, behind = int(values[0]), int(values[1])
+        for destination, revision in ((unpushed, f"{upstream}..HEAD"), (remote_only, f"HEAD..{upstream}")):
+            output = run("log", "-20", "--date=short", "--format=%h%x1f%ad%x1f%s", revision)
+            if output:
+                for line in output.splitlines():
+                    parts = line.split(chr(31), 2)
+                    if len(parts) == 3:
+                        destination.append({"sha": parts[0], "date": parts[1], "subject": parts[2]})
+
+    def refs(format_string: str, namespace: str) -> list[dict[str, str]]:
+        output = run("for-each-ref", f"--format={format_string}", namespace)
+        items: list[dict[str, str]] = []
+        if output:
+            for line in output.splitlines():
+                fields = line.split(maxsplit=1)
+                if fields and fields[0]:
+                    items.append({"name": fields[0], "sha": fields[1] if len(fields) > 1 else ""})
+        return items
+
+    local_branches = refs("%(refname:short) %(objectname:short)", "refs/heads")
+    remote_branches = refs("%(refname:short) %(objectname:short)", "refs/remotes")
+    stash_output = run("stash", "list", "--format=%gd%x1f%gs") or ""
+    stashes = []
+    for line in stash_output.splitlines():
+        fields = line.split(chr(31), 1)
+        if len(fields) == 2:
+            stashes.append({"ref": fields[0], "subject": fields[1]})
+
+    return {
+        "current_branch": current,
+        "detached": detached,
+        "upstream": upstream,
+        "ahead": ahead,
+        "behind": behind,
+        "unpushed_commits": unpushed,
+        "upstream_only_commits": remote_only,
+        "local_branches": local_branches,
+        "remote_branches": remote_branches,
+        "stashes": stashes,
+        "remote_refs_are_cached": True,
+    }

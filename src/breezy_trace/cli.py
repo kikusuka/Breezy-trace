@@ -10,7 +10,7 @@ from breezy_trace.agents import AgentSessionStore
 from breezy_trace.app import TraceApp
 from breezy_trace.backup import backup_database, restore_database
 from breezy_trace.config import data_dir, database_path
-from breezy_trace.git import inspect_details, inspect_status, recent_commits
+from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
 from breezy_trace.registry import ProjectError, ProjectRegistry
 
@@ -41,6 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     restore.add_argument("--yes", action="store_true", help="Confirm replacing the current local database.")
     commands.add_parser("status", help="Show read-only Git status for the current project.")
     commands.add_parser("inspect", help="Show detailed read-only Git changes, conflicts, and stashes.")
+    commands.add_parser("branches", aliases=["git"], help="Show local branches, upstream state, and cached remote commits.")
     commands.add_parser("resume", help="Show the context needed to resume the current project.")
 
     note = commands.add_parser("note", help="Add a note to the current registered project.")
@@ -222,13 +223,39 @@ def main() -> None:
             print(f"{project.name}\n  {project.path}")
         return
 
-    if args.command in {"status", "resume", "inspect"}:
+    if args.command in {"status", "resume", "inspect", "branches", "git"}:
         project = _current_project(parser, registry)
         if args.command == "status":
             status = inspect_status(Path(project.path))
             print(f"{project.name} — {status.branch}")
             print(status.summary)
             print(f"Ahead: {status.ahead}  Behind: {status.behind}")
+        elif args.command in {"branches", "git"}:
+            details = branch_intelligence(Path(project.path))
+            print(f"{project.name} — Git intelligence")
+            print(f"Current branch: {details['current_branch'] or '(detached HEAD)'}")
+            print(f"Upstream: {details['upstream'] or 'not configured'}")
+            if details["upstream"]:
+                print(f"Behind / ahead: {details['behind']} / {details['ahead']}")
+            print("\nLOCAL BRANCHES")
+            for item in details["local_branches"]:
+                marker = " *" if item["name"] == details["current_branch"] else ""
+                print(f"- {item['name']} ({item['sha']}){marker}")
+            print("\nCACHED REMOTE-TRACKING BRANCHES")
+            for item in details["remote_branches"]:
+                print(f"- {item['name']} ({item['sha']})")
+            print("\nLOCAL COMMITS NOT IN UPSTREAM")
+            for item in details["unpushed_commits"]:
+                print(f"- {item['sha']} {item['date']} {item['subject']}")
+            if not details["unpushed_commits"]:
+                print("- None detected (or no upstream configured).")
+            print("\nUPSTREAM COMMITS NOT IN LOCAL HEAD")
+            for item in details["upstream_only_commits"]:
+                print(f"- {item['sha']} {item['date']} {item['subject']}")
+            if not details["upstream_only_commits"]:
+                print("- None detected (or no upstream configured).")
+            print(f"\nStashes: {len(details['stashes'])}")
+            print("Remote branch data is from local cached refs; run git fetch yourself to refresh.")
         elif args.command == "inspect":
             status = inspect_status(Path(project.path))
             details = inspect_details(Path(project.path))
