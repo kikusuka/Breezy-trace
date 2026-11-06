@@ -11,15 +11,12 @@ from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
-
 from breezy_trace.database import connect
 from breezy_trace.models import Project
-
 
 def _decode_path(value: bytes) -> str:
     """Decode a Git path for SQLite without losing scan stability on odd filenames."""
     return value.decode("utf-8", errors="replace")
-
 
 def _parse_porcelain(data: bytes) -> dict[str, tuple[str, str]]:
     """Parse NUL-delimited porcelain v1 output, including rename/copy extra fields."""
@@ -42,7 +39,6 @@ def _parse_porcelain(data: bytes) -> dict[str, tuple[str, str]]:
             current[path] = (status, _event_type(status))
     return current
 
-
 def _event_type(status: str) -> str:
     if any(code in status for code in ("U",)) or status in {"AA", "DD"}:
         return "conflicted"
@@ -57,7 +53,6 @@ def _event_type(status: str) -> str:
     if status[0] != " ":
         return "staged"
     return "modified"
-
 
 class FileActivityStore:
     """Store explicit Git working-tree snapshots and only emit state transitions."""
