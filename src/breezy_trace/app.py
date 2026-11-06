@@ -33,7 +33,7 @@ Header { background: #102D50; color: #83CCFF; }
 #nav { height: 4; margin: 1 1 0 1; padding: 0 1; border: round #234467; align: center middle; }
 #nav Button { min-width: 3; width: 1fr; height: 2; margin: 0; padding: 0; border: none; background: #102D50; color: #83CCFF; }
 #nav Button:hover { background: #1D4F7A; color: #E1F2FF; }
-#nav Button:focus { border: tall #83CCFF; }
+#nav Button:focus { border: none; background: #1D4F7A; color: #E1F2FF; }
 #nav Button.active { background: #1D4F7A; color: #E1F2FF; text-style: bold; }
 #workspace { layout: horizontal; height: 1fr; margin: 1 1 0 1; }
 #project-list { width: 34%; min-width: 18; height: 1fr; }
@@ -113,7 +113,7 @@ class TraceApp(App[None]):
                 yield Static("HOME", id="view-title", markup=False)
                 yield Static(id="content", markup=False)
         yield Static(
-            "LOCAL-FIRST  ·  GIT-NATIVE  ·  NO AI REQUIRED  ·  NO TELEMETRY  ·  1–8 NAVIGATE  ·  Q QUIT",
+            "1–8 NAVIGATE  ·  CTRL+P PROJECTS  ·  Q QUIT",
             id="footer-note",
             markup=False,
         )
@@ -491,19 +491,12 @@ class TraceApp(App[None]):
         return "\n".join(lines)
 
     def _settings(self, project: Project) -> str:
-        return "\n".join([
-            "LOCAL SETTINGS & PRIVACY",
+        return "\\n".join([
+            "PROJECT SETTINGS",
             "",
             f"Active project: {project.name}",
             f"Project path: {project.path}",
-            f"Local database: {database_path()}",
-            "",
-            "PRIVACY BOUNDARIES",
-            "• Project metadata and journal data stay in your local SQLite database.",
-            "• Git inspection is read-only; Breezy Trace never fetches or changes branches.",
-            "• Agent integrations store allowlisted session metadata, not transcripts.",
-            "• Code indexing stores symbols, imports, paths and hashes, not source text.",
-            "• No telemetry or mandatory AI provider.",
+            f"Database: {database_path()}",
             "",
             "BACKUP & RESTORE",
             "Create a portable backup: breezy-trace backup",
