@@ -103,4 +103,17 @@ def test_backup_cleans_temporary_file_when_replace_fails(tmp_path: Path, monkeyp
         backup_database(live, destination)
 
     assert destination.read_bytes() == b"previous backup"
-    assert not (tmp_path / "backup.sqlite3.tmp").exists()
+    assert list(tmp_path.glob("backup.sqlite3.*.backup")) == []
+
+
+def test_backup_handles_uri_special_characters_in_paths(tmp_path: Path) -> None:
+    live = tmp_path / "live # database.sqlite3"
+    snapshot = tmp_path / "backup # database.sqlite3"
+    restored = tmp_path / "restored # database.sqlite3"
+    make_database(live)
+
+    backup_database(live, snapshot)
+    restore_database(snapshot, restored)
+
+    projects = ProjectRegistry(restored).list_projects()
+    assert len(projects) == 1
