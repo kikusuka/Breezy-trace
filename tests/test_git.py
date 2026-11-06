@@ -118,7 +118,9 @@ def test_terminal_text_replaces_control_characters() -> None:
     assert "\nnext" in cleaned
 
 
-def test_git_status_parses_nul_records_without_creating_newline_filename(monkeypatch, tmp_path: Path) -> None:
+def test_git_status_parses_nul_records_without_creating_newline_filename(
+    monkeypatch, tmp_path: Path
+) -> None:
     from subprocess import CompletedProcess
 
     import breezy_trace.git as git_module
