@@ -11,8 +11,8 @@ from typing import ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Vertical
-from textual.widgets import DataTable, Footer, Header, Static
+from textual.containers import Container, Horizontal, Vertical
+from textual.widgets import Button, DataTable, Footer, Header, Static
 
 from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
@@ -49,12 +49,28 @@ Header {
     color: #94A3B8;
 }
 #nav {
-    height: 3;
+    height: 4;
     margin: 1 1 0 1;
     padding: 0 1;
     border: round #334155;
-    color: #7DD3FC;
-    content-align: center middle;
+    align: center middle;
+}
+#nav Button {
+    min-width: 4;
+    width: 1fr;
+    height: 2;
+    margin: 0 1;
+    padding: 0 1;
+    border: none;
+    background: #1E293B;
+    color: #BAE6FD;
+}
+#nav Button:hover {
+    background: #164E63;
+    color: #F0F9FF;
+}
+#nav Button:focus {
+    border: tall #38BDF8;
 }
 #workspace {
     layout: horizontal;
@@ -164,11 +180,15 @@ class TraceApp(App[None]):
                 id="subtitle",
                 markup=False,
             )
-        yield Static(
-            "1 HOME    2 OVERVIEW    3 JOURNAL    4 AGENTS    5 GIT    6 ACTIVITY    7 CODE    8 SETTINGS",
-            id="nav",
-            markup=False,
-        )
+        with Horizontal(id="nav"):
+            yield Button("⌂", id="nav-home", tooltip="Home · press 1")
+            yield Button("▦", id="nav-overview", tooltip="Project overview · press 2")
+            yield Button("✎", id="nav-journal", tooltip="Journal · press 3")
+            yield Button("◉", id="nav-agents", tooltip="Agent sessions · press 4")
+            yield Button("⑂", id="nav-git", tooltip="Git intelligence · press 5")
+            yield Button("◷", id="nav-activity", tooltip="File activity · press 6")
+            yield Button("⌘", id="nav-code", tooltip="Code intelligence · press 7")
+            yield Button("⚙", id="nav-settings", tooltip="Settings · press 8")
         with Container(id="workspace"):
             with Vertical(id="project-list"):
                 yield Static("YOUR PROJECTS", id="content-title", markup=False)
@@ -201,7 +221,7 @@ class TraceApp(App[None]):
         else:
             self._render_view("home")
         self._show_intro_brand()
-        self.set_timer(0.62, self._show_intro_quote)
+        self.set_timer(0.9, self._show_intro_quote)
 
     def on_resize(self, event) -> None:
         """Switch the workspace between columns and stacked panels as it resizes."""
@@ -240,11 +260,11 @@ class TraceApp(App[None]):
             "“Every project leaves a trail.\nMake yours meaningful.”",
             "A SMALL THOUGHT BEFORE YOU BEGIN",
         )
-        self.set_timer(0.68, self._show_intro_credit)
+        self.set_timer(0.9, self._show_intro_credit)
 
     def _show_intro_credit(self) -> None:
         self._set_intro("FROM BREEZY LABS")
-        self.set_timer(0.58, self._show_intro_wordmark)
+        self.set_timer(0.82, self._show_intro_wordmark)
 
     def _show_intro_wordmark(self) -> None:
         wordmark = (
@@ -255,7 +275,7 @@ class TraceApp(App[None]):
             "  █    █   █  █  █  ████  ████"
         )
         self._set_intro(wordmark, "B R E E Z Y   T R A C E")
-        self.set_timer(0.82, self._finish_intro)
+        self.set_timer(1.05, self._finish_intro)
 
     def _finish_intro(self) -> None:
         self.query_one("#intro").styles.animate("opacity", 0.0, duration=0.24)
@@ -266,6 +286,22 @@ class TraceApp(App[None]):
 
     def action_skip_intro(self) -> None:
         self._hide_intro()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Make the compact icon navigation usable with mouse or keyboard focus."""
+        view_by_button = {
+            "nav-home": "home",
+            "nav-overview": "overview",
+            "nav-journal": "journal",
+            "nav-agents": "agents",
+            "nav-git": "git",
+            "nav-activity": "activity",
+            "nav-code": "code",
+            "nav-settings": "settings",
+        }
+        view = view_by_button.get(event.button.id or "")
+        if view:
+            self._navigate(view)
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.row_key is None:
