@@ -14,6 +14,7 @@ from breezy_trace.code_index import PythonCodeIndex
 from breezy_trace.config import data_dir, database_path
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
+from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS, TreeSitterCodeIndex
 from breezy_trace.registry import ProjectError, ProjectRegistry
 
 
@@ -67,12 +68,13 @@ def build_parser() -> argparse.ArgumentParser:
     activity_log = activity_commands.add_parser("log", help="Show recorded file activity transitions.")
     activity_log.add_argument("--limit", type=int, default=30, help="Maximum events to show (1-500).")
 
-    code = commands.add_parser("code", help="Index and search Python symbols and imports.")
+    code = commands.add_parser("code", help="Index and search source symbols and imports.")
     code_commands = code.add_subparsers(dest="code_command", required=True)
-    code_commands.add_parser("index", help="Explicitly index Python symbols from Git-listed files.")
-    code_search = code_commands.add_parser("search", help="Search indexed Python symbol names.")
+    code_commands.add_parser("index", help="Explicitly index supported languages from Git-listed files.")
+    code_search = code_commands.add_parser("search", help="Search indexed symbol names across languages.")
     code_search.add_argument("query")
     code_search.add_argument("--limit", type=int, default=50)
+    code_commands.add_parser("languages", help="Show built-in and optional language support.")
     code_imports = code_commands.add_parser("imports", help="List indexed imports, optionally filtered by module.")
     code_imports.add_argument("query", nargs="?")
     code_imports.add_argument("--limit", type=int, default=100)
@@ -156,11 +158,33 @@ def main() -> None:
                 if args.code_command == "index":
                     summary = code_index.index(project)
                     print(
-                        f"Python index updated: {summary['files_indexed']} indexed, "
+                        f"Python: {summary['files_indexed']} indexed, "
                         f"{summary['files_unchanged']} unchanged, "
                         f"{summary['syntax_errors']} syntax errors, "
-                        f"{summary['files_skipped']} skipped, "
-                        f"{summary['stale_files_removed']} stale files removed."
+                        f"{summary['files_skipped']} skipped."
+                    )
+                    if TreeSitterCodeIndex.available():
+                        polyglot = TreeSitterCodeIndex(registry.db_path).index(project)
+                        print(
+                            f"Tree-sitter: {polyglot['files_indexed']} indexed, "
+                            f"{polyglot['files_unchanged']} unchanged, "
+                            f"{polyglot['syntax_errors']} syntax errors, "
+                            f"{polyglot['files_skipped']} skipped, "
+                            f"{polyglot['stale_files_removed']} stale files removed."
+                        )
+                    else:
+                        print(
+                            "Other languages not indexed. Install optional support with: "
+                            "pip install 'breezy-trace[code]'"
+                        )
+                elif args.code_command == "languages":
+                    print("Built-in: Python")
+                    print("Optional Tree-sitter languages:")
+                    for language, extensions in LANGUAGE_EXTENSIONS.items():
+                        print(f"- {language}: {', '.join(sorted(extensions))}")
+                    print(
+                        "Tree-sitter package: "
+                        + ("installed" if TreeSitterCodeIndex.available() else "not installed")
                     )
                 elif args.code_command == "search":
                     results = code_index.search(project, args.query, args.limit)
@@ -169,14 +193,17 @@ def main() -> None:
                     for item in results:
                         print(
                             f"{item['path']}:{item['line']}  "
-                            f"{item['kind']:<16} {item['qualified_name']}"
+                            f"{item['kind']:<16} {item['qualified_name']} [{item.get('language', 'python')}]"
                         )
                 elif args.code_command == "imports":
                     results = code_index.imports(project, args.query, args.limit)
                     if not results:
                         print("No matching imports. Run: breezy-trace code index")
                     for item in results:
-                        print(f"{item['path']}:{item['line']}  {item['module']}")
+                        print(
+                            f"{item['path']}:{item['line']}  "
+                            f"{item['module']} [{item.get('language', 'python')}]"
+                        )
                 return
             if args.command == "activity":
                 activity_store = FileActivityStore(registry.db_path)

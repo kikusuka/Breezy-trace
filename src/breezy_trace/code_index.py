@@ -200,7 +200,7 @@ class PythonCodeIndex:
 
         with connect(self.db_path) as connection:
             rows = connection.execute(
-                "SELECT path FROM code_indexed_files WHERE project_id = ?", (project.id,)
+                "SELECT path FROM code_indexed_files WHERE project_id = ? AND language = 'python'", (project.id,)
             ).fetchall()
             stale = [row["path"] for row in rows if row["path"] not in current_paths]
             for relative in stale:
@@ -239,7 +239,7 @@ class PythonCodeIndex:
                 raise ValueError("Project is not registered in this Breezy Trace database.")
             rows = connection.execute(
                 """
-                SELECT path, name, qualified_name, kind, line, end_line
+                SELECT path, name, qualified_name, kind, line, end_line, language
                 FROM code_symbols
                 WHERE project_id = ? AND (
                     name LIKE ? COLLATE NOCASE OR qualified_name LIKE ? COLLATE NOCASE
@@ -257,7 +257,7 @@ class PythonCodeIndex:
             if query:
                 rows = connection.execute(
                     """
-                    SELECT path, module, line FROM code_imports
+                    SELECT path, module, line, language FROM code_imports
                     WHERE project_id = ? AND module LIKE ? COLLATE NOCASE
                     ORDER BY path, line LIMIT ?
                     """,
@@ -266,7 +266,7 @@ class PythonCodeIndex:
             else:
                 rows = connection.execute(
                     """
-                    SELECT path, module, line FROM code_imports
+                    SELECT path, module, line, language FROM code_imports
                     WHERE project_id = ? ORDER BY path, line LIMIT ?
                     """,
                     (project.id, limit),
