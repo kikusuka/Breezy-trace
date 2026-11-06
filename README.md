@@ -99,4 +99,6 @@ The current release candidate includes project registration, a terminal dashboar
 
 ## License
 
-License selection is pending. No license grant should be assumed until a license is added to this repository.
+Breezy Trace is released under the MIT License. See [`LICENSE`](LICENSE) for the complete terms.
+
+Copyright (c) 2026 Breezy.

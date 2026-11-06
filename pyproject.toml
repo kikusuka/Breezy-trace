@@ -8,6 +8,12 @@ version = "0.1.0"
 description = "Local-first project memory and development intelligence for your terminal"
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+classifiers = [
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+]
 dependencies = [
   "platformdirs>=4.0",
   "textual>=0.70",
