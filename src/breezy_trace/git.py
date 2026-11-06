@@ -129,8 +129,9 @@ def branch_intelligence(path: Path) -> dict[str, object]:
         result = _run(path, *args)
         return result.stdout.strip() if result and result.returncode == 0 else None
 
+    available = run("rev-parse", "--git-dir") is not None
     current = run("branch", "--show-current") or None
-    detached = current is None
+    detached = available and current is None
     upstream = run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
     ahead = behind = None
     unpushed: list[dict[str, str]] = []
@@ -171,6 +172,7 @@ def branch_intelligence(path: Path) -> dict[str, object]:
             stashes.append({"ref": fields[0], "subject": fields[1]})
 
     return {
+        "available": available,
         "current_branch": current,
         "detached": detached,
         "upstream": upstream,
