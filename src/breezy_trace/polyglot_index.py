@@ -13,7 +13,6 @@ import hashlib
 import os
 import subprocess
 import uuid
-from contextlib import closing
 from pathlib import Path
 from typing import Any
 
