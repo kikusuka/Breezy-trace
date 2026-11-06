@@ -384,8 +384,7 @@ class TraceApp(App[None]):
             "GIT INTELLIGENCE · READ ONLY",
             f"Current branch: {status.branch}",
             f"Upstream: {data['upstream'] or 'not configured'}",
-            f"Ahead: {data['ahead'] if data['ahead'] is not None else 'unknown'}    "
-            f"Behind: {data['behind'] if data['behind'] is not None else 'unknown'}",
+            f"Ahead: {data['ahead'] if data['ahead'] is not None else 'unknown'} | Behind: {data['behind'] if data['behind'] is not None else 'unknown'}",
             "Remote branch data is cached locally; no fetch is performed.",
             "",
             f"LOCAL BRANCHES ({len(data['local_branches'])})",
