@@ -12,9 +12,9 @@ from breezy_trace.app import TraceApp
 from breezy_trace.backup import backup_database, restore_database
 from breezy_trace.code_index import PythonCodeIndex
 from breezy_trace.config import data_dir, database_path
-from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS, TreeSitterCodeIndex
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
+from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS, TreeSitterCodeIndex
 from breezy_trace.registry import ProjectError, ProjectRegistry
 
 
