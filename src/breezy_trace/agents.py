@@ -10,6 +10,7 @@ import os
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from itertools import islice
 from pathlib import Path
 
 from breezy_trace.database import connect
@@ -89,7 +90,7 @@ def discover_claude_sessions(project_path: Path, claude_home: Path | None = None
     if not root.is_dir():
         return []
     found: list[AgentSession] = []
-    for index_path in sorted(root.glob("*/sessions-index.json"))[:MAX_DISCOVERY_FILES]:
+    for index_path in islice(root.glob("*/sessions-index.json"), MAX_DISCOVERY_FILES):
         index = _read_json(index_path)
         if not index:
             continue
@@ -129,7 +130,7 @@ def discover_opencode_sessions(
     for root in roots if roots is not None else _opencode_roots():
         if not root.is_dir():
             continue
-        for session_path in sorted(root.glob("*/*.json"))[:MAX_DISCOVERY_FILES]:
+        for session_path in islice(root.glob("*/*.json"), MAX_DISCOVERY_FILES):
             session = _read_json(session_path)
             if not session or not _project_matches(session.get("directory"), project_path):
                 continue
