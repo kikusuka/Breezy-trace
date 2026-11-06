@@ -67,6 +67,12 @@ def test_existing_database_migrates_to_current_schema(
                 f"SELECT COUNT(*) FROM {table}"
             ).fetchone()[0] == 0
 
+        assert connection.execute(
+            "SELECT name FROM projects WHERE id = 'project-1'"
+        ).fetchone()[0] == "preserved"
+        assert connection.execute(
+            "SELECT body FROM journal_entries WHERE id = 'note-1'"
+        ).fetchone()[0] == "Original journal data"
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
     finally:
         connection.close()
