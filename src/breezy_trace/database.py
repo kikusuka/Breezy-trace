@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
@@ -136,4 +136,41 @@ def connect(path: Path) -> sqlite3.Connection:
                 """
             )
             connection.execute("PRAGMA user_version = 2")
+    if version < 3:
+        with connection:
+            connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS code_indexed_files (
+                    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    path TEXT NOT NULL,
+                    content_hash TEXT NOT NULL,
+                    indexed_at TEXT NOT NULL,
+                    parse_error TEXT,
+                    PRIMARY KEY (project_id, path)
+                );
+                CREATE TABLE IF NOT EXISTS code_symbols (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    path TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    qualified_name TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    line INTEGER NOT NULL,
+                    end_line INTEGER NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS code_imports (
+                    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    path TEXT NOT NULL,
+                    module TEXT NOT NULL,
+                    line INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_code_symbols_project_name
+                    ON code_symbols(project_id, name);
+                CREATE INDEX IF NOT EXISTS idx_code_symbols_project_path
+                    ON code_symbols(project_id, path, line);
+                CREATE INDEX IF NOT EXISTS idx_code_imports_project_module
+                    ON code_imports(project_id, module);
+                """
+            )
+            connection.execute("PRAGMA user_version = 3")
     return connection

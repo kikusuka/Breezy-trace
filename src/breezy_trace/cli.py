@@ -10,6 +10,7 @@ from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
 from breezy_trace.app import TraceApp
 from breezy_trace.backup import backup_database, restore_database
+from breezy_trace.code_index import PythonCodeIndex
 from breezy_trace.config import data_dir, database_path
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
@@ -65,6 +66,16 @@ def build_parser() -> argparse.ArgumentParser:
     activity_commands.add_parser("scan", help="Take an explicit read-only Git working-tree snapshot.")
     activity_log = activity_commands.add_parser("log", help="Show recorded file activity transitions.")
     activity_log.add_argument("--limit", type=int, default=30, help="Maximum events to show (1-500).")
+
+    code = commands.add_parser("code", help="Index and search Python symbols and imports.")
+    code_commands = code.add_subparsers(dest="code_command", required=True)
+    code_commands.add_parser("index", help="Explicitly index Python symbols from Git-listed files.")
+    code_search = code_commands.add_parser("search", help="Search indexed Python symbol names.")
+    code_search.add_argument("query")
+    code_search.add_argument("--limit", type=int, default=50)
+    code_imports = code_commands.add_parser("imports", help="List indexed imports, optionally filtered by module.")
+    code_imports.add_argument("query", nargs="?")
+    code_imports.add_argument("--limit", type=int, default=100)
 
     sessions = commands.add_parser("sessions", help="List detected coding-agent sessions for this project.")
     sessions.add_argument("--sync", action="store_true", help="Discover local Claude Code and OpenCode session metadata first.")
@@ -136,10 +147,37 @@ def main() -> None:
     args, remainder = parser.parse_known_args()
     registry = ProjectRegistry()
 
-    if args.command in {"note", "task", "tasks", "done", "journal", "decision", "sessions", "activity"}:
+    if args.command in {"note", "task", "tasks", "done", "journal", "decision", "sessions", "activity", "code"}:
         project = _current_project(parser, registry)
         store = JournalStore(registry.db_path)
         try:
+            if args.command == "code":
+                code_index = PythonCodeIndex(registry.db_path)
+                if args.code_command == "index":
+                    summary = code_index.index(project)
+                    print(
+                        f"Python index updated: {summary['files_indexed']} indexed, "
+                        f"{summary['files_unchanged']} unchanged, "
+                        f"{summary['syntax_errors']} syntax errors, "
+                        f"{summary['files_skipped']} skipped, "
+                        f"{summary['stale_files_removed']} stale files removed."
+                    )
+                elif args.code_command == "search":
+                    results = code_index.search(project, args.query, args.limit)
+                    if not results:
+                        print("No matching symbols. Run: breezy-trace code index")
+                    for item in results:
+                        print(
+                            f"{item['path']}:{item['line']}  "
+                            f"{item['kind']:<16} {item['qualified_name']}"
+                        )
+                elif args.code_command == "imports":
+                    results = code_index.imports(project, args.query, args.limit)
+                    if not results:
+                        print("No matching imports. Run: breezy-trace code index")
+                    for item in results:
+                        print(f"{item['path']}:{item['line']}  {item['module']}")
+                return
             if args.command == "activity":
                 activity_store = FileActivityStore(registry.db_path)
                 if args.activity_command == "scan":
