@@ -3,6 +3,7 @@
 import os
 import sqlite3
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 from breezy_trace.database import SCHEMA_VERSION
@@ -19,9 +20,12 @@ def backup_database(source: Path, destination: Path) -> Path:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(destination.name + ".tmp")
     try:
+        # sqlite3.Connection's context manager handles transactions but does
+        # not close the connection. Explicit closing is required before the
+        # temporary file can be atomically replaced on Windows.
         with (
-            sqlite3.connect(f"file:{source}?mode=ro", uri=True) as src,
-            sqlite3.connect(temporary) as dst,
+            closing(sqlite3.connect(f"file:{source}?mode=ro", uri=True)) as src,
+            closing(sqlite3.connect(temporary)) as dst,
         ):
             src.backup(dst)
             result = dst.execute("PRAGMA integrity_check").fetchone()[0]
@@ -41,7 +45,7 @@ def restore_database(backup: Path, destination: Path) -> Path:
         raise ValueError("Backup source and live database destination must differ.")
     if not backup.is_file():
         raise FileNotFoundError(f"Backup file does not exist: {backup}")
-    with sqlite3.connect(f"file:{backup}?mode=ro", uri=True) as source:
+    with closing(sqlite3.connect(f"file:{backup}?mode=ro", uri=True)) as source:
         integrity = source.execute("PRAGMA integrity_check").fetchone()[0]
         version = source.execute("PRAGMA user_version").fetchone()[0]
         if integrity != "ok":
@@ -49,9 +53,12 @@ def restore_database(backup: Path, destination: Path) -> Path:
         if version < 1 or version > SCHEMA_VERSION:
             raise ValueError(f"Unsupported backup schema version: {version}")
         required = {"projects", "journal_entries", "project_tasks", "project_decisions"}
-        actual = {row[0] for row in source.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        )}
+        actual = {
+            row[0]
+            for row in source.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
         if not required.issubset(actual):
             raise ValueError("File is not a complete Breezy Trace database.")
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -61,7 +68,7 @@ def restore_database(backup: Path, destination: Path) -> Path:
         os.close(fd)
         temporary = Path(temp_name)
         try:
-            with sqlite3.connect(temporary) as target:
+            with closing(sqlite3.connect(temporary)) as target:
                 source.backup(target)
             os.replace(temporary, destination)
         finally:
