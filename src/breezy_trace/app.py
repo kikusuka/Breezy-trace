@@ -15,6 +15,7 @@ from breezy_trace.registry import ProjectRegistry
 
 THEME_CSS = """
 Screen {
+    layers: base overlay;
     background: #0F172A;
     color: #E2E8F0;
 }
@@ -57,6 +58,29 @@ Screen {
     padding: 0 2 1 2;
     color: #94A3B8;
 }
+#intro {
+    layer: overlay;
+    width: 100%;
+    height: 100%;
+    align: center middle;
+    background: #0F172A;
+    opacity: 1;
+}
+#intro-copy {
+    width: 100%;
+    height: auto;
+    content-align: center middle;
+    text-align: center;
+    color: #BAE6FD;
+    text-style: bold;
+}
+#intro-kicker {
+    width: 100%;
+    height: auto;
+    content-align: center middle;
+    text-align: center;
+    color: #38BDF8;
+}
 """
 
 
@@ -70,6 +94,7 @@ class TraceApp(App[None]):
         Binding("q", "quit", "Quit"),
         Binding("ctrl+p", "focus_projects", "Projects"),
         Binding("ctrl+h", "home", "Home"),
+        Binding("space", "skip_intro", "Skip intro", show=False),
         Binding("escape", "home", "Back"),
     ]
 
@@ -102,6 +127,9 @@ class TraceApp(App[None]):
                 )
         yield Static("LOCAL-FIRST  •  GIT-NATIVE  •  NO AI REQUIRED", id="footer-note")
         yield Footer()
+        with Container(id="intro"):
+            yield Static("BREEZY TRACE", id="intro-copy")
+            yield Static("", id="intro-kicker")
 
     def on_mount(self) -> None:
         table = self.query_one("#project-table", DataTable)
@@ -121,6 +149,48 @@ class TraceApp(App[None]):
                 "Choose a registered project to inspect its current state.\n\n"
                 f"[bold]{len(self.registry.list_projects())}[/bold] projects registered."
             )
+        self._show_intro_brand()
+        self.set_timer(0.62, self._show_intro_quote)
+
+    def _set_intro(self, main: str, kicker: str = "") -> None:
+        self.query_one("#intro-copy", Static).update(main)
+        self.query_one("#intro-kicker", Static).update(kicker)
+
+    def _show_intro_brand(self) -> None:
+        self._set_intro("BREEZY TRACE")
+
+    def _show_intro_quote(self) -> None:
+        self._set_intro(
+            "“Every project leaves a trail.\nMake yours meaningful.”",
+            "A SMALL THOUGHT BEFORE YOU BEGIN",
+        )
+        self.set_timer(0.68, self._show_intro_credit)
+
+    def _show_intro_credit(self) -> None:
+        self._set_intro("FROM BREEZY LABS")
+        self.set_timer(0.58, self._show_intro_wordmark)
+
+    def _show_intro_wordmark(self) -> None:
+        wordmark = (
+            "█████  ████   ████  ████  ████\n"
+            "  █    █   █  █  █  █     █\n"
+            "  █    ████   ████  █     ███\n"
+            "  █    █  █   █  █  █     █\n"
+            "  █    █   █  █  █  ████  ████"
+        )
+        self._set_intro(wordmark, "B R E E Z Y   T R A C E")
+        self.set_timer(0.82, self._finish_intro)
+
+    def _finish_intro(self) -> None:
+        intro = self.query_one("#intro")
+        intro.styles.animate("opacity", 0.0, duration=0.24)
+        self.set_timer(0.27, self._hide_intro)
+
+    def _hide_intro(self) -> None:
+        self.query_one("#intro").display = False
+
+    def action_skip_intro(self) -> None:
+        self._hide_intro()
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.row_key is None:
@@ -173,7 +243,7 @@ class TraceApp(App[None]):
     def action_home(self) -> None:
         self.active_project = None
         self.query_one("#project-detail", Static).update(
-            f"[bold]Global overview[/bold]\n\n"
+            "[bold]Global overview[/bold]\n\n"
             f"{len(self.registry.list_projects())} registered projects.\n\n"
             "Select a project to view its current Git state."
         )
