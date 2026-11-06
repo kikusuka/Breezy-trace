@@ -83,7 +83,7 @@ class FileActivityStore:
         snapshot = _parse_porcelain(result.stdout)
         observed_at = datetime.now(UTC).isoformat()
         events_created = 0
-        with closing(connect(self.db_path)) as connection:
+        with closing(connect(self.db_path)) as connection, connection:
             exists = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ?", (project.id,)
             ).fetchone()
@@ -148,7 +148,7 @@ class FileActivityStore:
     def list_events(self, project: Project, limit: int = 30) -> list[dict[str, str]]:
         if not 1 <= limit <= 500:
             raise ValueError("Activity limit must be between 1 and 500.")
-        with closing(connect(self.db_path)) as connection:
+        with closing(connect(self.db_path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT path, event_type, observed_at, evidence
