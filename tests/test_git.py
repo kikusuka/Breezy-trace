@@ -52,3 +52,42 @@ def test_recent_commits_returns_local_history(tmp_path: Path) -> None:
     assert len(commits) == 1
     assert commits[0]["subject"] == "Initial project"
     assert len(commits[0]["sha"]) == 7
+
+
+def test_git_status_labels_detached_head(tmp_path: Path) -> None:
+    import subprocess
+
+    from breezy_trace.git import inspect_status
+
+    subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "config", "user.name", "Trace Test"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "config", "user.email", "trace@example.invalid"],
+        check=True,
+    )
+    (tmp_path / "file.txt").write_text("one", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "file.txt"], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "commit", "-m", "initial"],
+        check=True, capture_output=True,
+    )
+    subprocess.run(["git", "-C", str(tmp_path), "checkout", "--detach"], check=True, capture_output=True)
+
+    assert inspect_status(tmp_path).branch == "detached HEAD"
+
+
+def test_git_status_handles_missing_git(monkeypatch, tmp_path: Path) -> None:
+    import subprocess
+
+    from breezy_trace.git import inspect_status
+
+    def missing_git(*_args, **_kwargs):
+        raise FileNotFoundError("git executable not found")
+
+    monkeypatch.setattr(subprocess, "run", missing_git)
+    status = inspect_status(tmp_path)
+    assert status.clean is False
+    assert "unavailable" in status.summary.lower() or "unavailable" in status.branch.lower()
