@@ -61,7 +61,8 @@ Then run `breezy-trace` from that registered repository to open its overview. Ru
 | `breezy-trace code languages` | List built-in and optional parser support |
 | `breezy-trace code index` | Explicitly index supported language symbols and imports |
 | `breezy-trace code search <query>` | Search indexed symbols across supported languages |
-| `breezy-trace code imports [query]` | Search indexed imports across supported languages |\n| `breezy-trace code calls [query]` | Inspect syntactic Python call sites (targets are not resolved) |
+| `breezy-trace code imports [query]` | Search indexed imports across supported languages |
+| `breezy-trace code calls [query]` | Inspect syntactic Python call sites (targets are not resolved) |
 | `breezy-trace backup` | Create a consistent portable SQLite backup |
 | `breezy-trace backup --output ./trace-backup.sqlite3` | Choose a backup destination |
 | `breezy-trace restore ./trace-backup.sqlite3 --yes` | Restore local data after explicit confirmation |
