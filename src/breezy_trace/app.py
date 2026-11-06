@@ -349,7 +349,11 @@ class TraceApp(App[None]):
             f"Branch: {status.branch}",
             f"Staged: {status.staged}    Modified: {status.modified}    Untracked: {status.untracked}",
             f"Ahead: {status.ahead}    Behind: {status.behind}",
-            f"Conflicts: {details['conflicts']}    Stashes: {details['stashes']}",
+            (
+                f"Conflicts: {details['conflicts']}    Stashes: {details['stashes']}"
+                if details.get("available", True)
+                else "Git details unavailable (command failed or timed out)"
+            ),
             "",
             "RECENT LOCAL COMMITS",
         ]
