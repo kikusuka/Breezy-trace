@@ -1,8 +1,8 @@
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from breezy_trace.git import inspect_status, recent_commits
 
