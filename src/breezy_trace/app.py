@@ -20,7 +20,7 @@ from breezy_trace.database import connect
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
 from breezy_trace.models import Project
-from breezy_trace.polyglot_index import supported_languages
+from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS
 from breezy_trace.registry import ProjectRegistry
 
 THEME_CSS = """
@@ -455,7 +455,7 @@ class TraceApp(App[None]):
         if not imports:
             lines.append("No imports indexed.")
         lines.extend(["", "PARSER SUPPORT"])
-        lines.extend(f"• {language}" for language in supported_languages())
+        lines.extend(f"• {language}" for language in ["python", *sorted(LANGUAGE_EXTENSIONS)])
         lines.extend(["", "Search with: breezy-trace code search QUERY"])
         return "\n".join(lines)
 
