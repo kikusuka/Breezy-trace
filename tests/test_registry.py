@@ -44,10 +44,20 @@ def test_duplicate_registration_is_rejected(tmp_path: Path) -> None:
         registry.register(repo)
 
 
-def test_non_git_directory_is_rejected(tmp_path: Path) -> None:
+def test_non_git_directory_is_rejected(tmp_path: Path, monkeypatch) -> None:
     directory = tmp_path / "plain"
     directory.mkdir()
     registry = ProjectRegistry(tmp_path / "trace.sqlite3")
+
+    def git_reports_non_repository(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            returncode=128,
+            stdout="",
+            stderr="fatal: not a git repository",
+        )
+
+    monkeypatch.setattr("breezy_trace.registry.subprocess.run", git_reports_non_repository)
 
     with pytest.raises(ProjectError, match="Not inside a Git repository"):
         registry.register(directory)
@@ -60,7 +70,6 @@ def test_unregister_removes_project(tmp_path: Path) -> None:
 
     assert registry.unregister(project.name) is True
     assert registry.list_projects() == []
-
 
 
 def test_unregister_cascades_project_journal_data(tmp_path: Path) -> None:
@@ -78,11 +87,24 @@ def test_unregister_cascades_project_journal_data(tmp_path: Path) -> None:
 
 
 def test_non_git_directory_ignores_inherited_git_dir(tmp_path: Path, monkeypatch) -> None:
-    external_repo = make_repo(tmp_path / "external")
     directory = tmp_path / "plain"
     directory.mkdir()
-    monkeypatch.setenv("GIT_DIR", str(external_repo / ".git"))
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "external" / ".git"))
     registry = ProjectRegistry(tmp_path / "trace.sqlite3")
+    observed = {}
+
+    def git_reports_non_repository(command, **kwargs):
+        observed["env"] = kwargs["env"]
+        return subprocess.CompletedProcess(
+            command,
+            returncode=128,
+            stdout="",
+            stderr="fatal: not a git repository",
+        )
+
+    monkeypatch.setattr("breezy_trace.registry.subprocess.run", git_reports_non_repository)
 
     with pytest.raises(ProjectError, match="Not inside a Git repository"):
         registry.register(directory)
+
+    assert not any(key.upper().startswith("GIT_") for key in observed["env"])
