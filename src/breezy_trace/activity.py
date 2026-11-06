@@ -5,6 +5,7 @@ starts a watcher, or attributes changes to an agent session.
 """
 
 import os
+import re
 import subprocess
 import uuid
 from contextlib import closing
@@ -81,6 +82,7 @@ class FileActivityStore:
             raise RuntimeError("Git status is unavailable or timed out for this project.") from error
         if result.returncode != 0:
             message = result.stderr.decode("utf-8", errors="replace").strip()
+            message = re.sub(r"[\\x00-\\x08\\x0b-\\x1f\\x7f-\\x9f]", "�", message)
             raise RuntimeError(message or "Git status could not be read for this project.")
 
         snapshot = _parse_porcelain(result.stdout)
