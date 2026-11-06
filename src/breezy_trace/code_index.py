@@ -13,6 +13,8 @@ import tokenize
 import uuid
 from pathlib import Path
 
+from contextlib import closing
+
 from breezy_trace.database import connect
 from breezy_trace.models import Project
 
@@ -93,7 +95,7 @@ class PythonCodeIndex:
 
     def index(self, project: Project) -> dict[str, int]:
         root = Path(project.path).resolve()
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             registered = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ? AND path = ?",
                 (project.id, str(root)),
@@ -125,7 +127,7 @@ class PythonCodeIndex:
 
             current_paths.add(relative)
             digest = hashlib.sha256(raw).hexdigest()
-            with connect(self.db_path) as connection:
+            with closing(connect(self.db_path)) as connection:
                 previous = connection.execute(
                     "SELECT content_hash FROM code_indexed_files WHERE project_id = ? AND path = ?",
                     (project.id, relative),
@@ -150,7 +152,7 @@ class PythonCodeIndex:
                 )
                 syntax_errors += 1
 
-            with connect(self.db_path) as connection:
+            with closing(connect(self.db_path)) as connection:
                 connection.execute(
                     "DELETE FROM code_symbols WHERE project_id = ? AND path = ?",
                     (project.id, relative),
@@ -198,7 +200,7 @@ class PythonCodeIndex:
                     )
             indexed += 1
 
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             rows = connection.execute(
                 "SELECT path FROM code_indexed_files WHERE project_id = ? AND language = 'python'", (project.id,)
             ).fetchall()
@@ -231,7 +233,7 @@ class PythonCodeIndex:
             raise ValueError("Search query cannot be empty.")
         if not 1 <= limit <= 200:
             raise ValueError("Code search limit must be between 1 and 200.")
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             registered = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ?", (project.id,)
             ).fetchone()
@@ -253,7 +255,7 @@ class PythonCodeIndex:
     def imports(self, project: Project, query: str | None = None, limit: int = 100) -> list[dict[str, object]]:
         if not 1 <= limit <= 500:
             raise ValueError("Import list limit must be between 1 and 500.")
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             if query:
                 rows = connection.execute(
                     """
