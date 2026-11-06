@@ -1,14 +1,17 @@
 """Read-only Git inspection helpers with bounded subprocess execution."""
 
 import subprocess
+import time
 from pathlib import Path
 
 from breezy_trace.models import GitStatus
 
-GIT_TIMEOUT_SECONDS = 12
+GIT_TIMEOUT_SECONDS = 5
 
 
-def _run(path: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
+def _run(
+    path: Path, *args: str, timeout: float = GIT_TIMEOUT_SECONDS
+) -> subprocess.CompletedProcess[str] | None:
     """Run a read-only Git command and return None when Git is unavailable or slow."""
     try:
         return subprocess.run(
@@ -16,7 +19,7 @@ def _run(path: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
             capture_output=True,
             text=True,
             check=False,
-            timeout=GIT_TIMEOUT_SECONDS,
+            timeout=timeout,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return None
@@ -110,8 +113,11 @@ def inspect_details(path: Path) -> dict[str, object]:
     stash = _run(path, "stash", "list")
     staged = _run(path, "diff", "--cached", "--stat")
     unstaged = _run(path, "diff", "--stat")
+    complete = all(
+        item is not None and item.returncode == 0 for item in (stash, staged, unstaged)
+    )
     return {
-        "available": True,
+        "available": complete,
         "conflicts": conflicts,
         "stashes": len(stash.stdout.splitlines()) if stash and stash.returncode == 0 else 0,
         "staged_diff": staged.stdout.strip() if staged and staged.returncode == 0 else "",
@@ -125,8 +131,13 @@ def branch_intelligence(path: Path) -> dict[str, object]:
     Remote-tracking refs are only the last locally cached state. This function
     never fetches, pulls, pushes, or changes repository state.
     """
+    deadline = time.monotonic() + 15
+
     def run(*args: str) -> str | None:
-        result = _run(path, *args)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        result = _run(path, *args, timeout=min(GIT_TIMEOUT_SECONDS, remaining))
         return result.stdout.strip() if result and result.returncode == 0 else None
 
     available = run("rev-parse", "--git-dir") is not None
@@ -172,7 +183,8 @@ def branch_intelligence(path: Path) -> dict[str, object]:
             stashes.append({"ref": fields[0], "subject": fields[1]})
 
     return {
-        "available": available,
+        "available": available and time.monotonic() < deadline,
+        "timed_out": time.monotonic() >= deadline,
         "current_branch": current,
         "detached": detached,
         "upstream": upstream,
