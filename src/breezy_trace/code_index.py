@@ -14,12 +14,10 @@ import uuid
 from contextlib import closing
 from pathlib import Path
 
-
 from breezy_trace.database import connect
 from breezy_trace.models import Project
 
 MAX_FILE_BYTES = 1_000_000
-
 
 class _SymbolVisitor(ast.NodeVisitor):
     def __init__(self) -> None:
@@ -68,7 +66,6 @@ class _SymbolVisitor(ast.NodeVisitor):
         module = ("." * node.level) + (node.module or "")
         self.imports.append({"module": module, "line": node.lineno})
 
-
 def _git_python_paths(root: Path) -> list[str]:
     try:
         result = subprocess.run(
@@ -89,7 +86,6 @@ def _git_python_paths(root: Path) -> list[str]:
         if item and item.lower().endswith(b".py")
     }
     return sorted(paths)
-
 
 class PythonCodeIndex:
     """Build and query an explicit, local-only Python symbol index."""
