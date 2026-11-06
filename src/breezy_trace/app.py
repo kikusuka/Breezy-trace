@@ -154,6 +154,7 @@ SCREEN_NAMES = {
     "8": ("settings", "SETTINGS"),
 }
 
+
 class TraceApp(App[None]):
     """Global project switcher and project intelligence workspace."""
 
