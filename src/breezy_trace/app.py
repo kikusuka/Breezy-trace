@@ -123,6 +123,7 @@ class TraceApp(App[None]):
         self.registry = ProjectRegistry()
         self.active_project = project
         self.current_view = "home"
+        self._intro_active = False
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -232,12 +233,15 @@ class TraceApp(App[None]):
         self.query_one("#intro-kicker", Static).update(kicker)
 
     def _show_intro_brand(self) -> None:
+        self._intro_active = True
         self._set_intro(
             "A clear trail through your projects, code, and development history.",
             "YOUR LOCAL PROJECT WORKSPACE",
         )
 
     def _show_intro_quote(self) -> None:
+        if not self._intro_active:
+            return
         self._set_intro(
             "Every project leaves a trail. Make yours meaningful.",
             "A SMALL THOUGHT BEFORE YOU BEGIN",
@@ -245,6 +249,8 @@ class TraceApp(App[None]):
         self.set_timer(2.8, self._show_intro_credit)
 
     def _show_intro_credit(self) -> None:
+        if not self._intro_active:
+            return
         self._set_intro(
             "Your projects. Your context. Your next step.",
             "BREEZY TRACE  ·  BY BREEZY LABS",
@@ -252,6 +258,7 @@ class TraceApp(App[None]):
         self.set_timer(2.8, self._finish_intro)
 
     def _finish_intro(self) -> None:
+        self._intro_active = False
         self._set_intro(
             "A clear trail through your projects, code, and development history."
         )
@@ -311,6 +318,7 @@ class TraceApp(App[None]):
             self._render_view("overview")
 
     def _render(self, title: str, body: str) -> None:
+        self._intro_active = False
         self.current_view = title.lower()
         self.query_one("#view-title", Static).update(title.upper())
         self.query_one("#home-actions").display = self.current_view == "home"
