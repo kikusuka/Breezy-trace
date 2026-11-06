@@ -88,10 +88,10 @@ def _node_text(node: Any, source: bytes) -> str:
 def _node_name(node: Any, source: bytes) -> str:
     named = node.child_by_field_name("name")
     if named is not None:
-        return _node_text(named, source).strip("`'\\"")
+        return _node_text(named, source).strip("`'")
     for child in node.named_children:
         if child.type in {"identifier", "type_identifier", "field_identifier", "operator"}:
-            return _node_text(child, source).strip("`'\\"")
+            return _node_text(child, source).strip("`'")
     return ""
 
 
