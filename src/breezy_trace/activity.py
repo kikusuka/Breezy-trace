@@ -140,6 +140,26 @@ class FileActivityStore:
                 )
                 events_created += 1
 
+            # Bound the optional activity journal: retain at most 90 days and
+            # the newest 10,000 events per project. The current state table is
+            # intentionally unaffected, so the next scan still detects changes.
+            connection.execute(
+                "DELETE FROM file_events WHERE project_id = ? AND observed_at < datetime('now', '-90 days')",
+                (project.id,),
+            )
+            connection.execute(
+                """
+                DELETE FROM file_events
+                WHERE project_id = ? AND rowid NOT IN (
+                    SELECT rowid FROM file_events
+                    WHERE project_id = ?
+                    ORDER BY observed_at DESC, rowid DESC
+                    LIMIT 10000
+                )
+                """,
+                (project.id, project.id),
+            )
+
         return {
             "paths": len(snapshot),
             "events_created": events_created,
