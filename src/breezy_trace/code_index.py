@@ -9,6 +9,7 @@ import hashlib
 import io
 import os
 import subprocess
+import threading
 import tokenize
 import uuid
 from contextlib import closing
@@ -68,26 +69,85 @@ class _SymbolVisitor(ast.NodeVisitor):
         self.imports.append({"module": module, "line": node.lineno})
 
 
-def _git_python_paths(root: Path) -> list[str]:
+MAX_DISCOVERED_PATHS = 100_000
+MAX_DISCOVERY_OUTPUT_BYTES = 64 * 1024 * 1024
+DISCOVERY_TIMEOUT_SECONDS = 30
+
+
+def git_source_paths(root: Path, suffixes: set[str]) -> list[str]:
+    """Stream Git paths with strict time, output, and candidate-count bounds."""
+    command = ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"]
     try:
-        result = subprocess.run(
-            ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"],
-            capture_output=True,
-            check=False,
-            timeout=30,
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
             env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as error:
-        raise RuntimeError("Git file discovery is unavailable or timed out.") from error
-    if result.returncode != 0:
-        reason = result.stderr.decode("utf-8", errors="replace").strip()
-        raise RuntimeError(reason or "Could not list project files with Git.")
-    paths = {
-        item.decode("utf-8", errors="replace")
-        for item in result.stdout.split(b"\0")
-        if item and item.lower().endswith(b".py")
-    }
+    except (FileNotFoundError, OSError) as error:
+        raise RuntimeError("Git file discovery is unavailable.") from error
+
+    timed_out = threading.Event()
+    timer = threading.Timer(
+        DISCOVERY_TIMEOUT_SECONDS,
+        lambda: (timed_out.set(), process.kill()),
+    )
+    timer.start()
+    paths: set[str] = set()
+    pending = bytearray()
+    candidate_count = output_bytes = 0
+    exceeded = False
+    try:
+        assert process.stdout is not None
+        while chunk := process.stdout.read(64 * 1024):
+            output_bytes += len(chunk)
+            if output_bytes > MAX_DISCOVERY_OUTPUT_BYTES:
+                exceeded = True
+                process.kill()
+                break
+            pending.extend(chunk)
+            while (separator := pending.find(0)) >= 0:
+                item = bytes(pending[:separator])
+                del pending[: separator + 1]
+                if not item:
+                    continue
+                candidate_count += 1
+                if candidate_count > MAX_DISCOVERED_PATHS:
+                    exceeded = True
+                    process.kill()
+                    break
+                decoded = item.decode("utf-8", errors="replace")
+                if Path(decoded).suffix.lower() in suffixes:
+                    paths.add(decoded)
+            if exceeded:
+                break
+        return_code = process.wait()
+    finally:
+        timer.cancel()
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        if process.stdout is not None:
+            process.stdout.close()
+
+    if timed_out.is_set():
+        raise RuntimeError("Git file discovery timed out after 30 seconds.")
+    if exceeded:
+        raise RuntimeError(
+            "Git file discovery exceeded its safety limit "
+            f"({MAX_DISCOVERED_PATHS:,} paths or "
+            f"{MAX_DISCOVERY_OUTPUT_BYTES // (1024 * 1024)} MiB of output). "
+            "Narrow the project or index a smaller repository."
+        )
+    if return_code != 0:
+        raise RuntimeError("Could not list project files with Git.")
+    if pending:
+        raise RuntimeError("Git returned an incomplete NUL-delimited file list.")
     return sorted(paths)
+
+
+def _git_python_paths(root: Path) -> list[str]:
+    return git_source_paths(root, {".py"})
 
 
 class PythonCodeIndex:
