@@ -8,7 +8,7 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import DataTable, Footer, Header, Static
 
-from breezy_trace.git import inspect_status
+from breezy_trace.git import branch_intelligence, inspect_status
 from breezy_trace.journal import JournalStore
 from breezy_trace.models import Project
 from breezy_trace.registry import ProjectRegistry
@@ -137,6 +137,7 @@ class TraceApp(App[None]):
 
     def show_project(self, project: Project) -> None:
         status = inspect_status(Path(project.path))
+        git_details = branch_intelligence(Path(project.path))
         journal = JournalStore(self.registry.db_path)
         entries = journal.list_entries(project, limit=3)
         tasks = journal.list_tasks(project, status="open")
