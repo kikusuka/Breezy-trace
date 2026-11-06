@@ -4,7 +4,6 @@ This module records paths and Git status codes only. It never opens file content
 starts a watcher, or attributes changes to an agent session.
 """
 
-import sqlite3
 import subprocess
 import uuid
 from datetime import UTC, datetime
