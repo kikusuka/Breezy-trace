@@ -12,7 +12,8 @@ from typing import ClassVar
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Button, DataTable, Footer, Header, Static
+from textual.screen import ModalScreen
+from textual.widgets import Button, DataTable, DirectoryTree, Footer, Header, Input, Static
 
 from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
@@ -22,7 +23,7 @@ from breezy_trace.git import branch_intelligence, inspect_details, inspect_statu
 from breezy_trace.journal import JournalStore
 from breezy_trace.models import Project
 from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS
-from breezy_trace.registry import ProjectRegistry
+from breezy_trace.registry import ProjectError, ProjectRegistry
 
 THEME_CSS = """
 Screen { layers: base overlay; background: #071426; color: #E1F2FF; }
@@ -42,9 +43,7 @@ Header { background: #102D50; color: #83CCFF; }
 #content-title { color: #83CCFF; text-style: bold; height: auto; margin-bottom: 1; }
 #content { height: 1fr; overflow-y: auto; color: #E1F2FF; }
 #footer-note { height: auto; padding: 0 2 1 2; }
-#intro { layer: overlay; width: 100%; height: 100%; align: center middle; background: #071426; }
-#intro-copy { width: 100%; height: auto; content-align: center middle; text-align: center; color: #83CCFF; text-style: bold; }
-#intro-kicker { width: 100%; height: auto; content-align: center middle; text-align: center; color: #9ABBD6; }
+#intro-kicker { height: auto; color: #9ABBD6; text-style: italic; margin-top: 1; }
 """
 
 SCREEN_NAMES = {
@@ -57,6 +56,44 @@ SCREEN_NAMES = {
     "7": ("code", "CODE"),
     "8": ("settings", "SETTINGS"),
 }
+
+
+class ProjectPicker(ModalScreen[Path | None]):
+    """Terminal-native folder picker for opening a Git project."""
+
+    CSS = """
+    ProjectPicker { align: center middle; background: #071426 80%; }
+    #picker-dialog { width: 86%; height: 86%; border: round #83CCFF; background: #0B1E35; padding: 1 2; }
+    #picker-title { color: #83CCFF; text-style: bold; height: auto; }
+    #folder-path { margin: 1 0; }
+    #directory-tree { height: 1fr; border: round #234467; }
+    #picker-actions { height: 3; align: right middle; }
+    #picker-actions Button { margin-left: 1; }
+    """
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="picker-dialog"):
+            yield Static("OPEN A PROJECT FOLDER", id="picker-title")
+            yield Input(value=str(Path.home()), placeholder="Enter any folder path", id="folder-path")
+            yield DirectoryTree(str(Path.home()), id="directory-tree")
+            with Horizontal(id="picker-actions"):
+                yield Button("Open path", id="open-path", variant="primary")
+                yield Button("Use selected folder", id="open-selected")
+                yield Button("Cancel", id="cancel-picker")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "cancel-picker":
+            self.dismiss(None)
+            return
+        if event.button.id == "open-path":
+            value = self.query_one("#folder-path", Input).value.strip()
+            if value:
+                self.dismiss(Path(value).expanduser())
+            return
+        if event.button.id == "open-selected":
+            node = self.query_one("#directory-tree", DirectoryTree).cursor_node
+            if node is not None and node.data is not None:
+                self.dismiss(Path(node.data.path))
 
 
 class TraceApp(App[None]):
@@ -86,6 +123,7 @@ class TraceApp(App[None]):
         self.registry = ProjectRegistry()
         self.active_project = project
         self.current_view = "home"
+        self._intro_active = False
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -96,6 +134,7 @@ class TraceApp(App[None]):
                 id="subtitle",
                 markup=False,
             )
+            yield Static("YOUR LOCAL PROJECT WORKSPACE", id="intro-kicker", markup=False)
         with Horizontal(id="nav"):
             yield Button("Home", id="nav-home", tooltip="Home · press 1")
             yield Button("Project", id="nav-overview", tooltip="Project overview · press 2")
@@ -111,6 +150,8 @@ class TraceApp(App[None]):
                 yield DataTable(id="project-table", cursor_type="row")
             with Vertical(id="content-panel"):
                 yield Static("HOME", id="view-title", markup=False)
+                with Horizontal(id="home-actions"):
+                    yield Button("Open Project", id="open-project", variant="primary")
                 yield Static(id="content", markup=False)
         yield Static(
             "1–8 NAVIGATE  ·  CTRL+P PROJECTS  ·  Q QUIT",
@@ -118,9 +159,6 @@ class TraceApp(App[None]):
             markup=False,
         )
         yield Footer()
-        with Container(id="intro"):
-            yield Static("BREEZY TRACE", id="intro-copy", markup=False)
-            yield Static("", id="intro-kicker", markup=False)
 
     def on_mount(self) -> None:
         table = self.query_one("#project-table", DataTable)
@@ -137,7 +175,8 @@ class TraceApp(App[None]):
         else:
             self._render_view("home")
         self._show_intro_brand()
-        self.set_timer(0.9, self._show_intro_quote)
+        # The welcome sequence lives in the hero, never over the workspace.
+        self.set_timer(2.4, self._show_intro_quote)
 
     def on_resize(self, event) -> None:
         """Switch the workspace between columns and stacked panels as it resizes."""
@@ -190,40 +229,43 @@ class TraceApp(App[None]):
             content_panel.styles.min_height = 0
 
     def _set_intro(self, main: str, kicker: str = "") -> None:
-        self.query_one("#intro-copy", Static).update(main)
+        self.query_one("#subtitle", Static).update(main)
         self.query_one("#intro-kicker", Static).update(kicker)
 
     def _show_intro_brand(self) -> None:
-        self._set_intro("BREEZY TRACE")
+        self._intro_active = True
+        self._set_intro(
+            "A clear trail through your projects, code, and development history.",
+            "YOUR LOCAL PROJECT WORKSPACE",
+        )
 
     def _show_intro_quote(self) -> None:
+        if not self._intro_active:
+            return
         self._set_intro(
-            "“Every project leaves a trail.\nMake yours meaningful.”",
+            "Every project leaves a trail. Make yours meaningful.",
             "A SMALL THOUGHT BEFORE YOU BEGIN",
         )
-        self.set_timer(0.9, self._show_intro_credit)
+        self.set_timer(2.8, self._show_intro_credit)
 
     def _show_intro_credit(self) -> None:
-        self._set_intro("FROM BREEZY LABS")
-        self.set_timer(0.82, self._show_intro_wordmark)
-
-    def _show_intro_wordmark(self) -> None:
-        wordmark = (
-            "╭──────────────╮\n"
-            "│   B  /  T    │\n"
-            "│   BREEZY     │\n"
-            "│   TRACE      │\n"
-            "╰──────────────╯"
+        if not self._intro_active:
+            return
+        self._set_intro(
+            "Your projects. Your context. Your next step.",
+            "BREEZY TRACE  ·  BY BREEZY LABS",
         )
-        self._set_intro(wordmark, "B R E E Z Y   T R A C E")
-        self.set_timer(1.05, self._finish_intro)
+        self.set_timer(2.8, self._finish_intro)
 
     def _finish_intro(self) -> None:
-        self.query_one("#intro").styles.animate("opacity", 0.0, duration=0.24)
-        self.set_timer(0.27, self._hide_intro)
+        self._intro_active = False
+        self._set_intro(
+            "A clear trail through your projects, code, and development history."
+        )
 
     def _hide_intro(self) -> None:
-        self.query_one("#intro").display = False
+        # Compatibility for the skip-intro action: restore the normal hero copy.
+        self._finish_intro()
 
     def action_skip_intro(self) -> None:
         self._hide_intro()
@@ -243,6 +285,25 @@ class TraceApp(App[None]):
         view = view_by_button.get(event.button.id or "")
         if view:
             self._navigate(view)
+        elif event.button.id == "open-project":
+            self.push_screen(ProjectPicker(), self._handle_project_pick)
+
+    def _handle_project_pick(self, selected_path: Path | None) -> None:
+        if selected_path is None:
+            return
+        try:
+            project = self.registry.find_by_path(selected_path)
+            if project is None:
+                project = self.registry.register(selected_path)
+                self.query_one("#project-table", DataTable).add_row(
+                    project.name, "select to inspect", key=project.id
+                )
+        except (OSError, ProjectError, ValueError) as error:
+            self.notify(str(error), title="Could not open project", severity="error")
+            return
+        self.active_project = project
+        self.registry.mark_opened(project.id)
+        self._render_view("overview")
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.row_key is None:
@@ -257,8 +318,10 @@ class TraceApp(App[None]):
             self._render_view("overview")
 
     def _render(self, title: str, body: str) -> None:
+        self._intro_active = False
         self.current_view = title.lower()
         self.query_one("#view-title", Static).update(title.upper())
+        self.query_one("#home-actions").display = self.current_view == "home"
         self.query_one("#content", Static).update(body)
         for button in self.query("#nav Button"):
             button.remove_class("active")
@@ -272,8 +335,8 @@ class TraceApp(App[None]):
                     "WELCOME TO BREEZY TRACE\n\n"
                     "Your registered projects will appear in the list.\n\n"
                     "GET STARTED\n"
-                    "From a Git repository, run: breezy-trace register .\n"
-                    "Then launch breezy-trace from that repository.\n\n"
+                    "Use Open Project to browse to any Git repository.\n"
+                    "Trace registers it and opens its workspace.\n\n"
                     "WHAT'S INSIDE\n"
                     "Project overview  ·  Git status, diffs and recent commits\n"
                     "Journal           ·  Notes, tasks and decisions\n"
@@ -290,7 +353,7 @@ class TraceApp(App[None]):
                 body = (
                     "YOUR DEVELOPMENT WORKSPACE\n\n"
                     f"{len(projects)} registered project(s).\n\n"
-                    "Select a project from the left to open its overview.\n\n"
+                    "Select a project from the left, or use Open Project to add another repository.\n\n"
                     "FEATURE DIRECTORY\n"
                     "Project overview     Git status, diffs, conflicts, stashes, commits\n"
                     "Journal              Notes, open/completed tasks, decisions\n"

@@ -372,12 +372,23 @@ def main() -> None:
 
     if remainder:
         if args.command is None and len(remainder) == 1:
-            project = registry.find_by_path(Path(remainder[0]))
+            target = Path(remainder[0]).expanduser()
+            project = registry.find_by_path(target)
             if project is None:
-                parser.error(
-                    f"{remainder[0]} is not a registered Git project. "
-                    "Register it first with: breezy-trace register <path>"
-                )
+                try:
+                    root = registry.resolve_git_root(target)
+                except ProjectError as error:
+                    parser.error(str(error))
+                answer = input(
+                    f"'{root}' is not registered. Register and open it? [y/N] "
+                ).strip().lower()
+                if answer not in {"y", "yes"}:
+                    TraceApp().run()
+                    return
+                try:
+                    project = registry.register(root)
+                except ProjectError as error:
+                    parser.error(str(error))
             registry.mark_opened(project.id)
             TraceApp(project=project).run()
             return
@@ -385,7 +396,22 @@ def main() -> None:
 
     project = None
     if args.command is None:
-        project = registry.find_by_path(Path.cwd())
+        current = Path.cwd()
+        project = registry.find_by_path(current)
+        if project is None:
+            try:
+                root = registry.resolve_git_root(current)
+            except ProjectError:
+                root = None
+            if root is not None:
+                answer = input(
+                    f"'{root}' is not registered. Register and open it? [y/N] "
+                ).strip().lower()
+                if answer in {"y", "yes"}:
+                    try:
+                        project = registry.register(root)
+                    except ProjectError as error:
+                        parser.error(str(error))
     if project:
         registry.mark_opened(project.id)
     TraceApp(project=project).run()
