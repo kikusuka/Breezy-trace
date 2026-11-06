@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from breezy_trace import __version__
+from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
 from breezy_trace.app import TraceApp
 from breezy_trace.backup import backup_database, restore_database
@@ -59,6 +60,12 @@ def build_parser() -> argparse.ArgumentParser:
     done.add_argument("task_id")
 
     commands.add_parser("journal", help="Show recent notes for the current project.")
+    activity = commands.add_parser("activity", help="Scan and review metadata-only file activity.")
+    activity_commands = activity.add_subparsers(dest="activity_command", required=True)
+    activity_commands.add_parser("scan", help="Take an explicit read-only Git working-tree snapshot.")
+    activity_log = activity_commands.add_parser("log", help="Show recorded file activity transitions.")
+    activity_log.add_argument("--limit", type=int, default=30, help="Maximum events to show (1-500).")
+
     sessions = commands.add_parser("sessions", help="List detected coding-agent sessions for this project.")
     sessions.add_argument("--sync", action="store_true", help="Discover local Claude Code and OpenCode session metadata first.")
 
@@ -129,10 +136,25 @@ def main() -> None:
     args, remainder = parser.parse_known_args()
     registry = ProjectRegistry()
 
-    if args.command in {"note", "task", "tasks", "done", "journal", "decision", "sessions"}:
+    if args.command in {"note", "task", "tasks", "done", "journal", "decision", "sessions", "activity"}:
         project = _current_project(parser, registry)
         store = JournalStore(registry.db_path)
         try:
+            if args.command == "activity":
+                activity_store = FileActivityStore(registry.db_path)
+                if args.activity_command == "scan":
+                    summary = activity_store.scan(project)
+                    print(
+                        f"Scanned Git working tree: {summary['paths']} changed paths; "
+                        f"{summary['events_created']} new activity events."
+                    )
+                elif args.activity_command == "log":
+                    records = activity_store.list_events(project, args.limit)
+                    if not records:
+                        print("No file activity recorded. Run: breezy-trace activity scan")
+                    for record in records:
+                        print(f"{record['observed_at']}  {record['event_type']:<20} {record['path']}")
+                return
             if args.command == "note":
                 store.add_note(project, args.title, args.body)
                 print(f"Saved note: {args.title}")
@@ -175,7 +197,7 @@ def main() -> None:
             elif args.command == "decision":
                 store.add_decision(project, args.title, args.decision, args.context)
                 print(f"Recorded decision: {args.title}")
-        except ValueError as error:
+        except (ValueError, RuntimeError) as error:
             parser.error(str(error))
         return
 

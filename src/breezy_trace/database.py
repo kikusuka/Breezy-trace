@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
@@ -118,5 +118,22 @@ def connect(path: Path) -> sqlite3.Connection:
     if version < 1:
         with connection:
             connection.executescript(_SCHEMA)
-            connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            connection.execute("PRAGMA user_version = 1")
+        version = 1
+    if version < 2:
+        with connection:
+            connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS file_activity_state (
+                    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    path TEXT NOT NULL,
+                    status_code TEXT NOT NULL,
+                    last_seen_at TEXT NOT NULL,
+                    PRIMARY KEY (project_id, path)
+                );
+                CREATE INDEX IF NOT EXISTS idx_file_activity_state_project
+                    ON file_activity_state(project_id);
+                """
+            )
+            connection.execute("PRAGMA user_version = 2")
     return connection
