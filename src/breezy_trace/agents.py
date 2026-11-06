@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from contextlib import closing
+
 from breezy_trace.database import connect
 from breezy_trace.models import Project
 
@@ -152,7 +154,7 @@ class AgentSessionStore:
     def sync(self, project: Project) -> int:
         sessions = discover_claude_sessions(Path(project.path))
         sessions.extend(discover_opencode_sessions(Path(project.path)))
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             exists = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ?", (project.id,)
             ).fetchone()
@@ -186,7 +188,7 @@ class AgentSessionStore:
     def list_sessions(self, project: Project, limit: int = 20) -> list[dict[str, object]]:
         if limit < 1:
             raise ValueError("Limit must be positive.")
-        with connect(self.db_path) as connection:
+        with closing(connect(self.db_path)) as connection:
             rows = connection.execute(
                 """
                 SELECT provider, external_id, started_at, ended_at, source, metadata_json
