@@ -200,7 +200,7 @@ class TreeSitterCodeIndex:
                 parse_error = "syntax errors detected" if tree.root_node.has_error else None
                 if parse_error:
                     syntax_errors += 1
-            except (OSError, RuntimeError, ValueError) as error:
+            except Exception as error:
                 symbols, imports = [], []
                 parse_error = f"parser error: {error}"
                 syntax_errors += 1
