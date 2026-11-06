@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
@@ -136,6 +136,7 @@ def connect(path: Path) -> sqlite3.Connection:
                 """
             )
             connection.execute("PRAGMA user_version = 2")
+        version = 2
     if version < 3:
         with connection:
             connection.executescript(
@@ -173,4 +174,22 @@ def connect(path: Path) -> sqlite3.Connection:
                 """
             )
             connection.execute("PRAGMA user_version = 3")
+        version = 3
+    if version < 4:
+        with connection:
+            connection.executescript(
+                """
+                ALTER TABLE code_indexed_files
+                    ADD COLUMN language TEXT NOT NULL DEFAULT 'python';
+                ALTER TABLE code_symbols
+                    ADD COLUMN language TEXT NOT NULL DEFAULT 'python';
+                ALTER TABLE code_imports
+                    ADD COLUMN language TEXT NOT NULL DEFAULT 'python';
+                CREATE INDEX IF NOT EXISTS idx_code_symbols_project_language
+                    ON code_symbols(project_id, language);
+                CREATE INDEX IF NOT EXISTS idx_code_imports_project_language
+                    ON code_imports(project_id, language);
+                """
+            )
+            connection.execute("PRAGMA user_version = 4")
     return connection
