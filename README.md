@@ -50,7 +50,8 @@ Then run `breezy-trace` from that registered repository to open its overview. Ru
 | `breezy-trace projects` | List registered projects |
 | `breezy-trace home` | Open the global project selector |
 | `breezy-trace status` | Show read-only Git status |
-| `breezy-trace inspect` | Show staged/unstaged diff summaries, merge conflicts, and stash count |\n| `breezy-trace branches` (or `breezy-trace git`) | Show local branches, upstream divergence, cached remote branches, and commit differences |
+| `breezy-trace inspect` | Show staged/unstaged diff summaries, merge conflicts, and stash count |
+| `breezy-trace branches` (or `breezy-trace git`) | Show local branches, upstream divergence, cached remote branches, and commit differences |
 | `breezy-trace sessions --sync` | Discover and index local Claude Code and OpenCode session metadata |
 | `breezy-trace sessions` | List previously indexed agent sessions |\n| `breezy-trace activity scan` | Explicitly snapshot changed Git paths without reading file contents |\n| `breezy-trace activity log` | Show recorded file-state transitions |
 | `breezy-trace backup` | Create a consistent portable SQLite backup |
