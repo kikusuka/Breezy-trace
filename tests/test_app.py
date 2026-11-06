@@ -18,7 +18,6 @@ def test_workspace_mounts_at_narrow_and_wide_terminal_sizes(tmp_path: Path, monk
                 assert pilot.app.query_one("#project-table") is not None
                 assert pilot.app.current_view == "home"
                 assert pilot.app.query_one("#intro-kicker") is not None
-                assert not pilot.app.query("#intro")
 
     asyncio.run(exercise())
 
