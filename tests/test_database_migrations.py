@@ -111,3 +111,27 @@ def test_database_refuses_a_newer_schema(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="newer than this Breezy Trace build"):
         connect(path)
+
+
+def test_connect_closes_handle_when_schema_is_newer(tmp_path: Path, monkeypatch) -> None:
+    import breezy_trace.database as database_module
+
+    path = tmp_path / "future-schema.sqlite3"
+    with sqlite3.connect(path) as setup:
+        setup.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
+
+    original_connect = sqlite3.connect
+    opened = []
+
+    def tracking_connect(*args, **kwargs):
+        connection = original_connect(*args, **kwargs)
+        opened.append(connection)
+        return connection
+
+    monkeypatch.setattr(database_module.sqlite3, "connect", tracking_connect)
+    with pytest.raises(RuntimeError, match="newer than this Breezy Trace build"):
+        database_module.connect(path)
+
+    assert len(opened) == 1
+    with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+        opened[0].execute("SELECT 1")
