@@ -152,7 +152,7 @@ class TreeSitterCodeIndex:
             ) from error
 
         root = Path(project.path).resolve()
-        with closing(connect(self.db_path)) as connection:
+        with closing(connect(self.db_path)) as connection, connection:
             registered = connection.execute(
                 "SELECT 1 FROM projects WHERE id = ? AND path = ?",
                 (project.id, str(root)),
@@ -184,7 +184,7 @@ class TreeSitterCodeIndex:
 
             current_paths.add(relative)
             digest = hashlib.sha256(raw).hexdigest()
-            with closing(connect(self.db_path)) as connection:
+            with closing(connect(self.db_path)) as connection, connection:
                 previous = connection.execute(
                     "SELECT content_hash FROM code_indexed_files WHERE project_id = ? AND path = ?",
                     (project.id, relative),
@@ -207,7 +207,7 @@ class TreeSitterCodeIndex:
                 parse_error = f"parser error: {error}"
                 syntax_errors += 1
 
-            with closing(connect(self.db_path)) as connection:
+            with closing(connect(self.db_path)) as connection, connection:
                 connection.execute(
                     "DELETE FROM code_symbols WHERE project_id = ? AND path = ?",
                     (project.id, relative),
@@ -256,7 +256,7 @@ class TreeSitterCodeIndex:
                 )
             indexed += 1
 
-        with closing(connect(self.db_path)) as connection:
+        with closing(connect(self.db_path)) as connection, connection:
             rows = connection.execute(
                 "SELECT path FROM code_indexed_files WHERE project_id = ? AND language != 'python'",
                 (project.id,),
