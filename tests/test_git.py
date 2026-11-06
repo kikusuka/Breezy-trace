@@ -96,7 +96,7 @@ def test_git_status_handles_missing_git(monkeypatch, tmp_path: Path) -> None:
 
 def test_git_status_counts_newline_filename_as_one_path(tmp_path: Path) -> None:
     subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
-    (tmp_path / "line\\nbreak.txt").write_text("hello", encoding="utf-8")
+    (tmp_path / "line\nbreak.txt").write_text("hello", encoding="utf-8")
 
     status = inspect_status(tmp_path)
 
@@ -107,8 +107,8 @@ def test_git_status_counts_newline_filename_as_one_path(tmp_path: Path) -> None:
 def test_terminal_text_replaces_control_characters() -> None:
     from breezy_trace.git import _clean_terminal_text
 
-    cleaned = _clean_terminal_text("safe\\x1b[31mred\\x07\\nnext")
-    assert "\\x1b" not in cleaned
-    assert "\\x07" not in cleaned
+    cleaned = _clean_terminal_text("safe\x1b[31mred\x07\nnext")
+    assert "\x1b" not in cleaned
+    assert "\x07" not in cleaned
     assert "safe" in cleaned and "red" in cleaned
-    assert "\\nnext" in cleaned
+    assert "\nnext" in cleaned
