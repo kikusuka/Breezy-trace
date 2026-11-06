@@ -10,8 +10,8 @@ from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
 from breezy_trace.app import TraceApp
 from breezy_trace.backup import backup_database, restore_database
-from breezy_trace.code_index import PythonCodeIndex
 from breezy_trace.call_graph import PythonCallGraph
+from breezy_trace.code_index import PythonCodeIndex
 from breezy_trace.config import data_dir, database_path
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
