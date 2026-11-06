@@ -8,15 +8,16 @@ and parse status are persisted.
 
 from __future__ import annotations
 
+
 import hashlib
 import os
 import subprocess
 import uuid
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
 from breezy_trace.code_index import MAX_FILE_BYTES
-from contextlib import closing
 
 from breezy_trace.database import connect
 from breezy_trace.models import Project
