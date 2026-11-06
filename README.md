@@ -24,10 +24,12 @@ Breezy Trace is a local-first developer workspace from **Breezy Labs**. It keeps
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,code]"
 ```
 
 On Windows PowerShell, activate with `.venv\\Scripts\\Activate.ps1`.
+
+Multi-language indexing is optional. Install `breezy-trace[code]` (or add `,code` to the extras above) to enable Tree-sitter support. The first explicit index of a language may download that language's grammar into the local cache; source files are never uploaded.
 
 ## First run
 
@@ -53,7 +55,13 @@ Then run `breezy-trace` from that registered repository to open its overview. Ru
 | `breezy-trace inspect` | Show staged/unstaged diff summaries, merge conflicts, and stash count |
 | `breezy-trace branches` (or `breezy-trace git`) | Show local branches, upstream divergence, cached remote branches, and commit differences |
 | `breezy-trace sessions --sync` | Discover and index local Claude Code and OpenCode session metadata |
-| `breezy-trace sessions` | List previously indexed agent sessions |\n| `breezy-trace activity scan` | Explicitly snapshot changed Git paths without reading file contents |\n| `breezy-trace activity log` | Show recorded file-state transitions |
+| `breezy-trace sessions` | List previously indexed agent sessions |
+| `breezy-trace activity scan` | Explicitly snapshot changed Git paths without reading file contents |
+| `breezy-trace activity log` | Show recorded file-state transitions |
+| `breezy-trace code languages` | List built-in and optional parser support |
+| `breezy-trace code index` | Explicitly index supported language symbols and imports |
+| `breezy-trace code search <query>` | Search indexed symbols across supported languages |
+| `breezy-trace code imports [query]` | Search indexed imports across supported languages |
 | `breezy-trace backup` | Create a consistent portable SQLite backup |
 | `breezy-trace backup --output ./trace-backup.sqlite3` | Choose a backup destination |
 | `breezy-trace restore ./trace-backup.sqlite3 --yes` | Restore local data after explicit confirmation |
@@ -87,7 +95,7 @@ python -m twine check dist/*
 
 ## Current scope
 
-The current release candidate includes project registration, a terminal dashboard, notes/tasks/decisions, Git working-tree status, staged and unstaged diff summaries, conflict and stash counts, local branch and upstream intelligence, cached remote-tracking branches, local-only/upstream-only commit summaries, recent local commit history, a resume summary, and portable SQLite backup/restore. Claude Code and OpenCode metadata-only session discovery is available through `breezy-trace sessions --sync`. Breezy Trace reads Claude Code `sessions-index.json` and OpenCode session metadata JSON only; it does not read transcript/message stores or persist prompt text, summaries, or session titles. Cursor, Windsurf, VS Code, Zed, file-activity-to-agent correlation, remote-provider APIs, and non-Python AST indexing, call graphs, and agent-to-file attribution are not implemented yet and are not claimed as available. File activity currently requires an explicit `activity scan`; it records Git-reported paths and status transitions only, does not capture or store file contents (Git may inspect files while calculating status), and does not run a background watcher. Code intelligence currently requires an explicit `code index`; it parses Git-listed Python files, stores symbol/import metadata and content hashes only, and never stores source text, comments, or docstrings. Git-ignored files, symlinks, and files larger than 1 MB are skipped.
+The current release candidate includes project registration, a terminal dashboard, notes/tasks/decisions, Git working-tree status, staged and unstaged diff summaries, conflict and stash counts, local branch and upstream intelligence, cached remote-tracking branches, local-only/upstream-only commit summaries, recent local commit history, a resume summary, and portable SQLite backup/restore. Claude Code and OpenCode metadata-only session discovery is available through `breezy-trace sessions --sync`. Breezy Trace reads Claude Code `sessions-index.json` and OpenCode session metadata JSON only; it does not read transcript/message stores or persist prompt text, summaries, or session titles. Cursor, Windsurf, VS Code, Zed, file-activity-to-agent correlation, remote-provider APIs, and call graphs and agent-to-file attribution are not implemented yet and are not claimed as available. File activity currently requires an explicit `activity scan`; it records Git-reported paths and status transitions only, does not capture or store file contents (Git may inspect files while calculating status), and does not run a background watcher. Code intelligence currently requires an explicit `code index`; Python parsing is built in, while JavaScript, TypeScript/TSX, Rust, Go, Java, C#, C/C++, Ruby, and PHP use optional Tree-sitter support. It stores symbol/import metadata and content hashes only, and never stores source text, comments, or docstrings. Tree-sitter grammars are fetched only on the user's explicit indexing action and cached locally; this grammar download is the only network activity involved in multi-language indexing. Git-ignored files, symlinks, and files larger than 1 MB are skipped.
 
 ## License
 
