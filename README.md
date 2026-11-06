@@ -29,7 +29,7 @@ python -m pip install -e ".[dev,code]"
 
 On Windows PowerShell, activate with `.venv\\Scripts\\Activate.ps1`.
 
-Multi-language indexing is optional. Install `breezy-trace[code]` (or add `,code` to the extras above) to enable Tree-sitter support. The first explicit index of a language may download that language's grammar into the local cache; source files are never uploaded.
+Multi-language indexing is optional. From this checkout, install `python -m pip install -e ".[code]"` to enable Tree-sitter support. The first explicit index of a language may download that language's grammar into the local cache; source files are never uploaded.
 
 ## First run
 
