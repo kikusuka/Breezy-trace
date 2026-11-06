@@ -19,6 +19,7 @@ from breezy_trace.models import Project
 MAX_METADATA_BYTES = 5_000_000
 MAX_DISCOVERY_FILES = 2_000
 
+
 @dataclass(frozen=True, slots=True)
 class AgentSession:
     provider: str
