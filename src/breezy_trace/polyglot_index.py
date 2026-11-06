@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from breezy_trace.code_index import MAX_FILE_BYTES, git_source_paths
+from breezy_trace.code_index import git_source_paths, read_source_file
 from breezy_trace.database import connect
 from breezy_trace.models import Project
 
@@ -156,16 +156,8 @@ class TreeSitterCodeIndex:
                 language = next(
                     name for name, extensions in LANGUAGE_EXTENSIONS.items() if suffix in extensions
                 )
-                path = root / relative
-                try:
-                    if path.is_symlink() or not path.is_file():
-                        skipped += 1
-                        continue
-                    if not path.resolve().is_relative_to(root) or path.stat().st_size > MAX_FILE_BYTES:
-                        skipped += 1
-                        continue
-                    raw = path.read_bytes()
-                except OSError:
+                raw = read_source_file(root, relative)
+                if raw is None:
                     skipped += 1
                     continue
 
