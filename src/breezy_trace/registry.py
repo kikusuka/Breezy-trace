@@ -33,16 +33,11 @@ class ProjectRegistry:
             # Ignore inherited repository overrides. A parent shell or IDE may
             # export GIT_DIR/GIT_WORK_TREE, making an unrelated folder appear
             # to belong to that repository.
-            env = os.environ.copy()
-            for key in (
-                "GIT_DIR",
-                "GIT_WORK_TREE",
-                "GIT_COMMON_DIR",
-                "GIT_INDEX_FILE",
-                "GIT_OBJECT_DIRECTORY",
-                "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-            ):
-                env.pop(key, None)
+            env = {
+                key: value
+                for key, value in os.environ.items()
+                if not key.upper().startswith("GIT_")
+            }
             result = subprocess.run(
                 ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
                 capture_output=True,
