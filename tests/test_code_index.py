@@ -148,3 +148,31 @@ def test_index_reuses_one_database_connection_for_many_files(tmp_path: Path, mon
 
     assert summary["files_indexed"] == 12
     assert calls == 1
+
+
+
+def test_git_path_discovery_stops_at_candidate_limit(tmp_path: Path, monkeypatch) -> None:
+    import breezy_trace.code_index as code_index_module
+
+    root, _project, _db_path = make_project(tmp_path)
+    for number in range(4):
+        (root / f"module_{number}.py").write_text("pass\n", encoding="utf-8")
+
+    monkeypatch.setattr(code_index_module, "MAX_DISCOVERED_PATHS", 3)
+
+    try:
+        code_index_module.git_source_paths(root, {".py"})
+    except RuntimeError as error:
+        assert "exceeded its safety limit" in str(error)
+    else:
+        raise AssertionError("Discovery should stop when the candidate limit is exceeded")
+
+
+def test_git_path_discovery_keeps_nul_delimited_filenames(tmp_path: Path) -> None:
+    import breezy_trace.code_index as code_index_module
+
+    root, _project, _db_path = make_project(tmp_path)
+    unusual = root / "line\nbreak.py"
+    unusual.write_text("def unusual_name():\n    pass\n", encoding="utf-8")
+
+    assert code_index_module.git_source_paths(root, {".py"}) == ["line\nbreak.py"]
