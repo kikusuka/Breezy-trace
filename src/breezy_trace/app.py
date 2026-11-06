@@ -17,7 +17,6 @@ from textual.widgets import DataTable, Footer, Header, Static
 from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
 from breezy_trace.config import database_path
-
 from breezy_trace.database import connect
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
@@ -154,7 +153,6 @@ SCREEN_NAMES = {
     "7": ("code", "CODE"),
     "8": ("settings", "SETTINGS"),
 }
-
 
 class TraceApp(App[None]):
     """Global project switcher and project intelligence workspace."""
