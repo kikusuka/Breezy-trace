@@ -7,11 +7,11 @@ session metadata documents are inspected.
 import hashlib
 import json
 import os
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from contextlib import closing
 
 from breezy_trace.database import connect
 from breezy_trace.models import Project
