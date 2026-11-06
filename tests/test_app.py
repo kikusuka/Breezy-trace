@@ -35,6 +35,10 @@ def test_icon_navigation_buttons_switch_views(tmp_path: Path, monkeypatch) -> No
             await pilot.click("#nav-journal")
             assert pilot.app.current_view == "journal"
             assert "active" in pilot.app.query_one("#nav-journal").classes
+            subtitle = pilot.app.query_one("#subtitle").render()
+            assert not pilot.app._intro_active
+            pilot.app._show_intro_quote()
+            assert pilot.app.query_one("#subtitle").render() == subtitle
             await pilot.click("#nav-git")
             assert pilot.app.current_view == "git"
             await pilot.click("#nav-home")
