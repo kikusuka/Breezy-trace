@@ -451,7 +451,7 @@ class TraceApp(App[None]):
         return "\n".join(lines)
 
     def _code(self, project: Project) -> str:
-        with closing(connect(self.registry.db_path)) as connection:
+        with closing(connect(self.registry.db_path)) as connection, connection:
             files = connection.execute(
                 "SELECT language, COUNT(*) AS count FROM code_indexed_files "
                 "WHERE project_id = ? GROUP BY language ORDER BY language",
