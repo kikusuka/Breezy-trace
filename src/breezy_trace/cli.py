@@ -1,22 +1,47 @@
 """Command-line entry point."""
 
 import argparse
+import os
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from breezy_trace import __version__
+from breezy_trace import integrate
+from breezy_trace.actions import (
+    build_handoff,
+    clone_project,
+    create_project,
+    import_todos,
+    resolve_open_target,
+)
 from breezy_trace.activity import FileActivityStore
 from breezy_trace.agents import AgentSessionStore
-from breezy_trace.app import TraceApp
 from breezy_trace.backup import backup_database, restore_database
 from breezy_trace.call_graph import PythonCallGraph
 from breezy_trace.code_index import PythonCodeIndex
 from breezy_trace.config import data_dir, database_path
+from breezy_trace.editor import NOTE_TEMPLATE, EditorError, edit_text, parse_note_text
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
+from breezy_trace.metrics import find_todos
 from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS, TreeSitterCodeIndex
+from breezy_trace.prompt import SHELLS, SNIPPETS, prompt_segment
 from breezy_trace.registry import ProjectError, ProjectRegistry
+from breezy_trace.standup import collect_standup, format_standup
+from breezy_trace.visuals import basic_glyphs
+
+
+def _run_tui(args: argparse.Namespace, project=None) -> None:
+    """Import the terminal UI only when it is needed, so shell commands and the prompt
+    segment start fast."""
+    from breezy_trace.app import TraceApp
+
+    TraceApp(project=project, intro=_intro_enabled(args)).run()
+
+
+def _intro_enabled(args: argparse.Namespace) -> bool:
+    return not (args.no_intro or os.environ.get("BREEZY_TRACE_NO_INTRO"))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -25,6 +50,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="Local-first project memory and development intelligence.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "--no-intro", action="store_true", help="Skip the animated boot sequence."
+    )
     commands = parser.add_subparsers(dest="command")
 
     register = commands.add_parser("register", help="Register a local Git project.")
@@ -47,9 +75,57 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("inspect", help="Show detailed read-only Git changes, conflicts, and stashes.")
     commands.add_parser("branches", aliases=["git"], help="Show local branches, upstream state, and cached remote commits.")
     commands.add_parser("resume", help="Show the context needed to resume the current project.")
+    handoff = commands.add_parser(
+        "handoff", help="Print a Markdown summary to paste into any agent or hand to a teammate."
+    )
+    handoff.add_argument("--out", type=Path, help="Write the summary to this file instead.")
+    todos = commands.add_parser(
+        "todos", help="List TODO/FIXME comments in tracked files, or turn them into tasks."
+    )
+    todos.add_argument(
+        "--import", dest="import_tasks", action="store_true",
+        help="Create a task for each comment that is not already tracked.",
+    )
+    open_cmd = commands.add_parser(
+        "open", help="Open a folder in Breezy Trace, adding it first if needed (used by Explorer)."
+    )
+    open_cmd.add_argument("path", nargs="?", type=Path, help="Folder to open (default: here).")
+    integrate_cmd = commands.add_parser(
+        "integrate", help="Add or remove the Windows Explorer right-click menu entry."
+    )
+    integrate_cmd.add_argument("action", choices=("install", "uninstall", "status"))
+    new = commands.add_parser(
+        "new", help="Create a new project: a folder with an empty Git repository, registered."
+    )
+    new.add_argument("name", help="Project (folder) name.")
+    new.add_argument("--in", dest="directory", type=Path, help="Create it inside this folder (default: here).")
+    clone = commands.add_parser(
+        "clone", help="Clone a GitHub / GitLab / any Git URL and register it."
+    )
+    clone.add_argument("url", help="Repository URL, e.g. https://github.com/owner/repo.git")
+    clone.add_argument("--into", dest="directory", type=Path, help="Clone inside this folder (default: here).")
+    standup = commands.add_parser(
+        "standup", help="Markdown standup of your commits, finished tasks and what is next."
+    )
+    standup.add_argument("--days", type=int, default=1, help="Look back this many days (default 1).")
+    standup.add_argument(
+        "--all-authors", action="store_true", help="Include everyone's commits, not just yours."
+    )
+    prompt = commands.add_parser(
+        "prompt", help="Print the current project's state for a shell prompt (silent elsewhere)."
+    )
+    prompt.add_argument("--fast", action="store_true", help="Project name and open tasks only.")
+    prompt.add_argument("--unicode", action="store_true", help="Use ± ↑ ↓ ✓ ○ instead of ASCII.")
+    prompt.add_argument("--init", choices=SHELLS, help="Print setup code for a shell and exit.")
+    search = commands.add_parser(
+        "search", help="Search notes, tasks and decisions across every project."
+    )
+    search.add_argument("query", help="Text to look for.")
 
     note = commands.add_parser("note", help="Add a note to the current registered project.")
-    note.add_argument("title")
+    note.add_argument(
+        "title", nargs="?", help="Note title. Omit it to write the note in your editor."
+    )
     note.add_argument("--body", default="", help="Note content.")
 
     task = commands.add_parser("task", help="Add a task to the current registered project.")
@@ -153,7 +229,7 @@ def main() -> None:
     args, remainder = parser.parse_known_args()
     registry = ProjectRegistry()
 
-    if args.command in {"note", "task", "tasks", "done", "journal", "decision", "sessions", "activity", "code"}:
+    if args.command in {"note", "task", "tasks", "done", "journal", "decision", "sessions", "activity", "code", "handoff", "todos"}:
         project = _current_project(parser, registry)
         store = JournalStore(registry.db_path)
         try:
@@ -232,8 +308,26 @@ def main() -> None:
                         print(f"{record['observed_at']}  {record['event_type']:<20} {record['path']}")
                 return
             if args.command == "note":
-                store.add_note(project, args.title, args.body)
-                print(f"Saved note: {args.title}")
+                title, body = args.title, args.body
+                if not title:
+                    try:
+                        title, body = parse_note_text(edit_text(NOTE_TEMPLATE))
+                    except EditorError as error:
+                        print(f"error: {error}", file=sys.stderr)
+                        raise SystemExit(1) from error
+                    if not title:
+                        print("Nothing written; note cancelled.")
+                        return
+                store.add_note(project, title, body)
+                print(f"Saved note: {title}")
+            elif args.command == "todos":
+                if args.import_tasks:
+                    print(import_todos(registry.db_path, project))
+                else:
+                    found = find_todos(Path(project.path))
+                    for name, line, text in found:
+                        print(f"{name}:{line}  {text}")
+                    print(f"{len(found)} TODO/FIXME comment{'s' if len(found) != 1 else ''}.")
             elif args.command == "task":
                 task_id = store.add_task(project, args.title, args.details)
                 print(f"Added task: {args.title} ({task_id})")
@@ -273,8 +367,94 @@ def main() -> None:
             elif args.command == "decision":
                 store.add_decision(project, args.title, args.decision, args.context)
                 print(f"Recorded decision: {args.title}")
+            elif args.command == "handoff":
+                text = build_handoff(registry.db_path, project)
+                if args.out:
+                    args.out.write_text(text, encoding="utf-8")
+                    print(f"Wrote {args.out}")
+                else:
+                    print(text, end="")
         except (ValueError, RuntimeError) as error:
             parser.error(str(error))
+        return
+
+    if args.command == "integrate":
+        try:
+            import winreg
+        except ImportError:
+            print("Explorer integration is only available on Windows.", file=sys.stderr)
+            raise SystemExit(1) from None
+        if args.action == "install":
+            for command in integrate.install(winreg):
+                print(f"Registered: {command}")
+            print("Right-click a folder in Explorer and choose 'Open with Breezy Trace'.")
+            print("(Windows 11: under 'Show more options'.) Re-run this if you move or recreate "
+                  "the Python environment.")
+        elif args.action == "uninstall":
+            print(f"Removed {integrate.uninstall(winreg)} registry entries.")
+        else:
+            current = integrate.installed_command(winreg)
+            print(f"Installed: {current}" if current else "Not installed.")
+        return
+
+    if args.command == "open":
+        def confirm_init(message: str) -> bool:
+            if not sys.stdin.isatty():
+                return False
+            print(message)
+            return input("[y/N] ").strip().lower() in ("y", "yes")
+
+        try:
+            project = resolve_open_target(registry, args.path or Path.cwd(), confirm_init)
+        except ProjectError as error:
+            print(f"error: {error}", file=sys.stderr)
+            if sys.stdin.isatty():
+                input("Press Enter to close. ")
+            raise SystemExit(1) from error
+        registry.mark_opened(project.id)
+        _run_tui(args, project)
+        return
+
+    if args.command in ("new", "clone"):
+        try:
+            if args.command == "new":
+                created = create_project(registry, args.directory or Path.cwd(), args.name)
+            else:
+                created = clone_project(registry, args.url, args.directory or Path.cwd())
+        except ProjectError as error:
+            print(f"error: {error}", file=sys.stderr)
+            raise SystemExit(1) from error
+        print(f"Registered {created.name} at {created.path}")
+        return
+
+    if args.command == "prompt":
+        if args.init:
+            print(SNIPPETS[args.init], end="")
+            return
+        ascii_only = not args.unicode or basic_glyphs()
+        try:
+            segment = prompt_segment(registry, Path.cwd(), ascii_only=ascii_only, fast=args.fast)
+        except Exception:  # noqa: BLE001  a prompt must never print a traceback
+            return
+        if segment:
+            print(segment)
+        return
+
+    if args.command == "standup":
+        days = max(1, args.days)
+        since = datetime.now(UTC) - timedelta(days=days)
+        report = collect_standup(
+            registry.db_path, registry.list_projects(), since, mine_only=not args.all_authors
+        )
+        print(format_standup(report, days), end="")
+        return
+
+    if args.command == "search":
+        rows = JournalStore(registry.db_path).search_all(args.query, limit=50)
+        if not rows:
+            print("No matches.")
+        for row in rows:
+            print(f"{row['created_at'][:10]}  {row['project_name']}  [{row['kind']}] {row['title']}")
         return
 
     if args.command == "backup":
@@ -372,23 +552,49 @@ def main() -> None:
 
     if remainder:
         if args.command is None and len(remainder) == 1:
-            project = registry.find_by_path(Path(remainder[0]))
+            target = Path(remainder[0]).expanduser()
+            project = registry.find_by_path(target)
             if project is None:
-                parser.error(
-                    f"{remainder[0]} is not a registered Git project. "
-                    "Register it first with: breezy-trace register <path>"
-                )
+                try:
+                    root = registry.resolve_git_root(target)
+                except ProjectError as error:
+                    parser.error(str(error))
+                answer = input(
+                    f"'{root}' is not registered. Register and open it? [y/N] "
+                ).strip().lower()
+                if answer not in {"y", "yes"}:
+                    _run_tui(args)
+                    return
+                try:
+                    project = registry.register(root)
+                except ProjectError as error:
+                    parser.error(str(error))
             registry.mark_opened(project.id)
-            TraceApp(project=project).run()
+            _run_tui(args, project)
             return
         parser.error(f"Unrecognized arguments: {' '.join(remainder)}")
 
     project = None
     if args.command is None:
-        project = registry.find_by_path(Path.cwd())
+        current = Path.cwd()
+        project = registry.find_by_path(current)
+        if project is None:
+            try:
+                root = registry.resolve_git_root(current)
+            except ProjectError:
+                root = None
+            if root is not None:
+                answer = input(
+                    f"'{root}' is not registered. Register and open it? [y/N] "
+                ).strip().lower()
+                if answer in {"y", "yes"}:
+                    try:
+                        project = registry.register(root)
+                    except ProjectError as error:
+                        parser.error(str(error))
     if project:
         registry.mark_opened(project.id)
-    TraceApp(project=project).run()
+    _run_tui(args, project)
 
 
 if __name__ == "__main__":

@@ -123,3 +123,104 @@ class JournalStore:
                    ORDER BY created_at DESC LIMIT ?""",
                 (project.id, limit),
             ).fetchall()
+
+    def recent_open_tasks(self, limit: int = 6) -> list[sqlite3.Row]:
+        """Newest open tasks across every registered project (for the lobby)."""
+        with closing(connect(self.db_path)) as connection, connection:
+            return connection.execute(
+                """SELECT t.title, t.created_at, p.name AS project_name
+                   FROM project_tasks t JOIN projects p ON p.id = t.project_id
+                   WHERE t.status = 'open'
+                   ORDER BY t.created_at DESC LIMIT ?""",
+                (limit,),
+            ).fetchall()
+
+    def count_open_tasks(self) -> int:
+        with closing(connect(self.db_path)) as connection, connection:
+            row = connection.execute(
+                "SELECT COUNT(*) AS count FROM project_tasks WHERE status = 'open'"
+            ).fetchone()
+        return int(row["count"])
+
+    def totals(self) -> dict[str, int]:
+        """Counts across every registered project, for the lobby."""
+        with closing(connect(self.db_path)) as connection, connection:
+            def count(sql: str) -> int:
+                return int(connection.execute(sql).fetchone()[0])
+
+            return {
+                "notes": count("SELECT COUNT(*) FROM journal_entries"),
+                "open_tasks": count("SELECT COUNT(*) FROM project_tasks WHERE status = 'open'"),
+                "done_tasks": count("SELECT COUNT(*) FROM project_tasks WHERE status = 'done'"),
+                "decisions": count("SELECT COUNT(*) FROM project_decisions"),
+            }
+
+    def search_all(self, query: str, limit: int = 40) -> list[sqlite3.Row]:
+        """Case-insensitive text search over notes, tasks and decisions in every project."""
+        query = query.strip()
+        if not query:
+            return []
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
+        with closing(connect(self.db_path)) as connection, connection:
+            return connection.execute(
+                r"""
+                SELECT 'note' AS kind, e.title AS title, e.body AS detail,
+                       e.created_at AS created_at, p.name AS project_name, '' AS status
+                  FROM journal_entries e JOIN projects p ON p.id = e.project_id
+                 WHERE e.title LIKE ?1 ESCAPE '\' OR e.body LIKE ?1 ESCAPE '\'
+                UNION ALL
+                SELECT 'task', t.title, t.details, t.created_at, p.name, t.status
+                  FROM project_tasks t JOIN projects p ON p.id = t.project_id
+                 WHERE t.title LIKE ?1 ESCAPE '\' OR t.details LIKE ?1 ESCAPE '\'
+                UNION ALL
+                SELECT 'decision', d.title,
+                       d.decision || CASE WHEN d.context <> '' THEN ' - ' || d.context ELSE '' END,
+                       d.created_at, p.name, ''
+                  FROM project_decisions d JOIN projects p ON p.id = d.project_id
+                 WHERE d.title LIKE ?1 ESCAPE '\' OR d.decision LIKE ?1 ESCAPE '\'
+                    OR d.context LIKE ?1 ESCAPE '\'
+                ORDER BY created_at DESC LIMIT ?2
+                """,
+                (pattern, limit),
+            ).fetchall()
+
+    def activity_since(self, project: Project, since: str) -> dict[str, list[sqlite3.Row]]:
+        """Notes, decisions and completed tasks recorded for ``project`` since the ISO time."""
+        with closing(connect(self.db_path)) as connection, connection:
+            return {
+                "notes": connection.execute(
+                    "SELECT title, created_at FROM journal_entries "
+                    "WHERE project_id = ? AND created_at >= ? ORDER BY created_at",
+                    (project.id, since),
+                ).fetchall(),
+                "decisions": connection.execute(
+                    "SELECT title, decision, created_at FROM project_decisions "
+                    "WHERE project_id = ? AND created_at >= ? ORDER BY created_at",
+                    (project.id, since),
+                ).fetchall(),
+                "done": connection.execute(
+                    "SELECT title, completed_at FROM project_tasks "
+                    "WHERE project_id = ? AND status = 'done' AND completed_at >= ? "
+                    "ORDER BY completed_at",
+                    (project.id, since),
+                ).fetchall(),
+            }
+
+    def project_counts(self, project: Project) -> dict[str, int]:
+        """What removing ``project`` from Trace would delete from the database."""
+        with closing(connect(self.db_path)) as connection, connection:
+            def count(sql: str) -> int:
+                return int(connection.execute(sql, (project.id,)).fetchone()[0])
+
+            return {
+                "notes": count("SELECT COUNT(*) FROM journal_entries WHERE project_id = ?"),
+                "open_tasks": count(
+                    "SELECT COUNT(*) FROM project_tasks WHERE project_id = ? AND status = 'open'"
+                ),
+                "done_tasks": count(
+                    "SELECT COUNT(*) FROM project_tasks WHERE project_id = ? AND status = 'done'"
+                ),
+                "decisions": count("SELECT COUNT(*) FROM project_decisions WHERE project_id = ?"),
+            }
+

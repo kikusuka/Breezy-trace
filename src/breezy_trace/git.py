@@ -3,6 +3,8 @@
 import re
 import subprocess
 import time
+from collections import Counter
+from datetime import date
 from pathlib import Path
 
 from breezy_trace.models import GitStatus
@@ -34,6 +36,13 @@ def _run(
     result.stdout = _clean_terminal_text(result.stdout)
     result.stderr = _clean_terminal_text(result.stderr)
     return result
+
+
+def run_git(
+    path: Path, *args: str, timeout: float = GIT_TIMEOUT_SECONDS
+) -> subprocess.CompletedProcess[str] | None:
+    """Public wrapper for the read-only Git runner (used by the metrics module)."""
+    return _run(path, *args, timeout=timeout)
 
 
 def inspect_status(path: Path) -> GitStatus:
@@ -260,3 +269,103 @@ def branch_intelligence(path: Path) -> dict[str, object]:
         "stashes": stashes,
         "remote_refs_are_cached": True,
     }
+
+
+def commit_activity(path: Path, days: int = 84) -> dict[date, int]:
+    """Commits per author date over the last ``days`` days (local branches and remotes).
+
+    Stashes and tags are deliberately excluded so the counts reflect real work.
+    """
+    command = _run(
+        path, "log", "--branches", "--remotes", f"--since={days} days ago",
+        "--date=short", "--format=%ad",
+    )
+    if command is None or command.returncode != 0:
+        return {}
+    counts: dict[date, int] = {}
+    for line in command.stdout.splitlines():
+        try:
+            day = date.fromisoformat(line.strip())
+        except ValueError:
+            continue
+        counts[day] = counts.get(day, 0) + 1
+    return counts
+
+
+def hot_files(path: Path, days: int = 30, limit: int = 5) -> list[tuple[str, int]]:
+    """Most frequently changed paths in recent history, most changed first."""
+    command = _run(
+        path, "log", "--branches", "--remotes", f"--since={days} days ago",
+        "--name-only", "--format=", "--no-renames",
+    )
+    if command is None or command.returncode != 0:
+        return []
+    counts = Counter(line.strip() for line in command.stdout.splitlines() if line.strip())
+    return counts.most_common(limit)
+
+
+_GRAPH_LINE = re.compile(
+    r"^(?P<graph>[\s*|/\\_.-]*)(?P<sha>[0-9a-f]{7,40})(?: \((?P<refs>[^)]*)\))? (?P<subject>.*)$"
+)
+
+
+def parse_graph_line(line: str) -> tuple[str, str, list[str], str]:
+    """Split a ``git log --graph --oneline --decorate`` line into
+    ``(graph prefix, sha, decorations, subject)``; connector-only lines have no sha."""
+    match = _GRAPH_LINE.match(line)
+    if match is None:
+        return line, "", [], ""
+    refs = [ref.strip() for ref in (match["refs"] or "").split(",") if ref.strip()]
+    return match["graph"], match["sha"], refs, match["subject"]
+
+
+def commit_graph(path: Path, limit: int = 24) -> list[str]:
+    """ASCII commit graph of local branches, cached remotes and HEAD (read-only)."""
+    command = _run(
+        path, "log", "--graph", "--oneline", "--decorate", "--color=never",
+        "--branches", "--remotes", "HEAD", "-n", str(limit),
+    )
+    if command is None or command.returncode != 0:
+        return []
+    return [line.rstrip() for line in command.stdout.splitlines() if line.strip()]
+
+
+def _status_letter(index: str, worktree: str) -> str:
+    if index == "?":
+        return "?"
+    if "U" in (index, worktree) or (index, worktree) in (("A", "A"), ("D", "D")):
+        return "U"
+    if "R" in (index, worktree) or "C" in (index, worktree):
+        return "R"
+    if "D" in (index, worktree):
+        return "D"
+    if "A" in (index, worktree):
+        return "A"
+    return "M"
+
+
+def parse_porcelain_z(raw: str) -> list[tuple[str, str]]:
+    """``git status --porcelain=v1 -z`` -> ``(letter, path)`` with letters A, M, D, R, U, ?"""
+    entries = raw.split("\0")
+    changes: list[tuple[str, str]] = []
+    position = 0
+    while position < len(entries):
+        entry = entries[position]
+        position += 1
+        if len(entry) < 4:
+            continue
+        index, worktree, name = entry[0], entry[1], entry[3:]
+        if index in "RC":
+            position += 1  # the next entry is the original path
+        changes.append((_status_letter(index, worktree), name))
+    return changes
+
+
+def changed_files(path: Path, limit: int = 12) -> tuple[int, list[tuple[str, str]]]:
+    """``(total changed, first ``limit`` changes)`` for the working tree (read-only)."""
+    command = _run(path, "status", "--porcelain=v1", "-z", timeout=10)
+    if command is None or command.returncode != 0:
+        return 0, []
+    changes = parse_porcelain_z(command.stdout)
+    return len(changes), changes[:limit]
+

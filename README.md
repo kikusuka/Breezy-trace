@@ -40,17 +40,29 @@ cd ~/code/my-project
 breezy-trace register .
 ```
 
-Then run `breezy-trace` from that registered repository to open its overview. Run it outside a registered repository to open the global project selector. Only explicitly registered repositories appear in the selector.
+Then run `breezy-trace` (or `trace`) from that registered repository to open its overview. From an unregistered Git repository, launch either command and confirm the registration prompt to add and open it. From outside a repository, the command opens the global project selector. In the lobby, press `o` to add a repository that already exists on this machine, `n` to create a brand-new project, `c` to clone one from a GitHub/GitLab URL, and `Delete` to remove one from Trace (its files are never touched); inside a project `w` opens its GitHub/GitLab page, `v` opens it in your editor, File Explorer or a terminal, and `R` runs one of its own commands (pytest, npm scripts, cargo, go, gradle, make, dotnet). Select a project with the arrow keys and `Enter` to open its full-width page and `Enter` on a project to open its full-width page. Inside a project, `1`–`7` (or click a tab) switch between Resume, Metrics, Journal, Git, Activity, Code and Settings, and `Esc` returns to the lobby. Every manual feature has a key (`n` note, `t` task, `d` decision, `x` complete a task, `i` index code, `a` scan activity, `s` sync sessions, `e` export a Markdown handoff, `N` write a note in your editor, `m` turn TODO/FIXME comments into tasks, `b` back up), `u` shows the standup (press again for 3 and 7 days), `/` searches notes, tasks and decisions across all projects, `r` refreshes, `T` or `F2` switches between the blue and midnight-blue themes (remembered), and `?` or `F1` opens help from anywhere. On the classic Windows console, thin block characters are replaced with widely available ones automatically; set `BREEZY_TRACE_GLYPHS=full` or `basic` to override, or use Windows Terminal for the full look. Nested repositories resolve to their own Git root.
 
 ## CLI reference
 
 | Command | Purpose |
 | --- | --- |
-| `breezy-trace` | Open the current registered project or global home |
+| `breezy-trace` (or `trace`) | Open the current project or global home |
 | `breezy-trace register <path>` | Register a Git repository |
 | `breezy-trace register . --name "Display name"` | Register with a display name |
 | `breezy-trace projects` | List registered projects |
 | `breezy-trace home` | Open the global project selector |
+| `breezy-trace note` (no title) | Write the note in your editor (`$VISUAL` / `$EDITOR`; Notepad on Windows) |
+| `breezy-trace todos [--import]` | List TODO/FIXME comments, or turn them into tasks without duplicates |
+| `breezy-trace standup [--days N] [--all-authors]` | Markdown standup: your commits, finished tasks, decisions and what is next, across all projects |
+| `breezy-trace prompt [--fast] [--unicode]` | A few characters of project state for your shell prompt; silent outside registered repositories |
+| `breezy-trace prompt --init SHELL` | Setup code for `powershell`, `bash`, `zsh` or `starship` |
+| `breezy-trace open [PATH]` | Open a folder in Breezy Trace, adding it first if needed (offers `git init` for a plain folder) |
+| `breezy-trace integrate install` | Windows: add a right-click **Open with Breezy Trace** to Explorer (`uninstall` / `status` too) |
+| `breezy-trace new NAME [--in DIR]` | Create a new project: a folder with an empty Git repository, registered |
+| `breezy-trace clone URL [--into DIR]` | Clone a GitHub / GitLab / any Git URL and register it (uses the network because you ask) |
+| `breezy-trace search QUERY` | Search notes, tasks and decisions across every project |
+| `breezy-trace handoff [--out FILE]` | Markdown summary to paste into any agent or hand to a teammate |
+| `breezy-trace --no-intro` | Skip the animated boot sequence (or set `BREEZY_TRACE_NO_INTRO=1`) |
 | `breezy-trace status` | Show read-only Git status |
 | `breezy-trace inspect` | Show staged/unstaged diff summaries, merge conflicts, and stash count |
 | `breezy-trace branches` (or `breezy-trace git`) | Show local branches, upstream divergence, cached remote branches, and commit differences |
@@ -111,3 +123,22 @@ The current release candidate includes project registration, a terminal dashboar
 Breezy Trace is released under the MIT License. See [`LICENSE`](LICENSE) for the complete terms.
 
 Copyright (c) 2026 Breezy.
+
+## Shell prompt
+
+`breezy-trace prompt` prints something like `cyrrus main *2 ^1 t3` (project, branch, changed files, unpushed commits, open tasks) and nothing at all outside a registered repository, so it is safe in every prompt. It never loads the terminal UI, so it is quick. Add it to your prompt with the generated setup code, for example in PowerShell:
+
+```powershell
+breezy-trace prompt --init powershell >> $PROFILE
+```
+
+`--fast` prints only the project name and open tasks (one Git call), and `--unicode` uses `± ↑ ↓ ✓ ○` instead of ASCII. The classic `cmd.exe` prompt cannot run commands, so use PowerShell or Windows Terminal.
+
+## Adding projects from Windows Explorer
+
+```bat
+breezy-trace integrate install
+```
+
+adds **Open with Breezy Trace** to the right-click menu of folders (Windows 11: under *Show more options*). Choosing it adds the folder if needed and opens it; for a folder that is not a Git repository yet it asks before creating one. It only writes two per-user registry keys, and `breezy-trace integrate uninstall` removes them. You can also drag a folder from Explorer into the path box of the `o` dialog.
+
