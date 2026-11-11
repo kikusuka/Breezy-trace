@@ -18,8 +18,14 @@ class Point:
 
 class Node:
     def __init__(
-        self, kind: str, start: int, end: int, children=None, fields=None,
-        text: bytes = b"", offset: int = 0
+        self,
+        kind: str,
+        start: int,
+        end: int,
+        children=None,
+        fields=None,
+        text: bytes = b"",
+        offset: int = 0,
     ) -> None:
         self.type = kind
         self.start_point = Point(start)

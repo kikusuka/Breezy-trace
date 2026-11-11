@@ -68,7 +68,10 @@ def parse_remote_url(name: str, raw: str) -> Remote | None:
         return None
     host = host.lower()
     return Remote(
-        name=name, host=host, slug=slug, provider=provider_for(host),
+        name=name,
+        host=host,
+        slug=slug,
+        provider=provider_for(host),
         web_url=f"https://{host}/{slug}",
     )
 

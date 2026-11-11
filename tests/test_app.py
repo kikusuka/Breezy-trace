@@ -33,11 +33,25 @@ def _init_repo(path: Path, commit: bool = False) -> Path:
     subprocess.run(["git", "init", str(path)], check=True, capture_output=True, text=True)
     if commit:
         (path / "app.py").write_text("print('hi')\n", encoding="utf-8")
-        subprocess.run(["git", "-C", str(path), "add", "."], check=True, capture_output=True, text=True)
         subprocess.run(
-            ["git", "-C", str(path), "-c", "user.name=t", "-c", "user.email=t@e.com",
-             "commit", "-m", "first"],
-            check=True, capture_output=True, text=True,
+            ["git", "-C", str(path), "add", "."], check=True, capture_output=True, text=True
+        )
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(path),
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@e.com",
+                "commit",
+                "-m",
+                "first",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
         )
     return path
 
@@ -91,8 +105,14 @@ def test_number_keys_and_tabs_switch_project_views(tmp_path: Path, monkeypatch) 
             await pilot.click("#tab-journal")
             assert pilot.app.current_view == "journal"
             assert "active" in pilot.app.query_one("#tab-journal").classes
-            for key, view in (("4", "git"), ("5", "activity"), ("6", "code"),
-                              ("7", "settings"), ("2", "metrics"), ("1", "overview")):
+            for key, view in (
+                ("4", "git"),
+                ("5", "activity"),
+                ("6", "code"),
+                ("7", "settings"),
+                ("2", "metrics"),
+                ("1", "overview"),
+            ):
                 await pilot.press(key)
                 assert pilot.app.current_view == view
             await pilot.click("#tab-home")
@@ -382,8 +402,12 @@ def test_footer_keys_are_contextual_but_every_key_stays_live(tmp_path: Path, mon
             app = pilot.app
             app._handle_project_pick(repository)
             await settle(pilot)
-            for view, shown in (("code", "index_code"), ("activity", "scan_activity"),
-                                ("activity", "sync_sessions"), ("settings", "backup_data")):
+            for view, shown in (
+                ("code", "index_code"),
+                ("activity", "scan_activity"),
+                ("activity", "sync_sessions"),
+                ("settings", "backup_data"),
+            ):
                 app.action_goto(view)
                 assert app.check_action(shown, ()) is True
                 assert app.check_action(shown + "_any", ()) is False
@@ -495,10 +519,14 @@ def test_dependency_map_and_todo_import_and_editor_keys(tmp_path: Path, monkeypa
     repository = _init_repo(tmp_path / "deps-project")
     (repository / "pkg").mkdir()
     (repository / "pkg" / "__init__.py").write_text("", encoding="utf-8")
-    (repository / "pkg" / "a.py").write_text("from pkg import b\n# TODO: wire a\n", encoding="utf-8")
+    (repository / "pkg" / "a.py").write_text(
+        "from pkg import b\n# TODO: wire a\n", encoding="utf-8"
+    )
     (repository / "pkg" / "b.py").write_text("import os\n", encoding="utf-8")
     (repository / "main.py").write_text("import pkg.a\n", encoding="utf-8")
-    subprocess.run(["git", "-C", str(repository), "add", "."], check=True, capture_output=True, text=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "add", "."], check=True, capture_output=True, text=True
+    )
 
     async def exercise() -> None:
         async with TraceApp(intro=False).run_test(size=(120, 36)) as pilot:
@@ -519,7 +547,10 @@ def test_dependency_map_and_todo_import_and_editor_keys(tmp_path: Path, monkeypa
             app.action_import_todos()
             await app.workers.wait_for_complete()
             await settle(pilot)
-            titles = [row["title"] for row in JournalStore(app.registry.db_path).list_tasks(app.active_project)]
+            titles = [
+                row["title"]
+                for row in JournalStore(app.registry.db_path).list_tasks(app.active_project)
+            ]
             assert any("TODO: wire a" in title for title in titles)
 
             app.action_goto("journal")
@@ -533,8 +564,12 @@ def test_dependency_map_and_todo_import_and_editor_keys(tmp_path: Path, monkeypa
 def test_standup_view_lists_projects_and_cycles_its_window(tmp_path: Path, monkeypatch) -> None:
     _isolate(tmp_path, monkeypatch)
     repository = _init_repo(tmp_path / "standup-project", commit=True)
-    subprocess.run(["git", "-C", str(repository), "config", "user.email", "t@e.com"],
-                   check=True, capture_output=True, text=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "config", "user.email", "t@e.com"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
     async def exercise() -> None:
         async with TraceApp(intro=False).run_test(size=(120, 36)) as pilot:
@@ -548,7 +583,11 @@ def test_standup_view_lists_projects_and_cycles_its_window(tmp_path: Path, monke
             assert app.current_view == "standup"
             assert app.query_one("#project-list").display is True
             text = app._standup_text().plain
-            assert "last 24 hours" in text and "standup-project" in text and "Finish the dialog" in text
+            assert (
+                "last 24 hours" in text
+                and "standup-project" in text
+                and "Finish the dialog" in text
+            )
             await pilot.press("u")
             assert app._standup_days == 3 and "last 3 days" in app._standup_text().plain
             await pilot.press("escape")
@@ -559,8 +598,12 @@ def test_standup_view_lists_projects_and_cycles_its_window(tmp_path: Path, monke
 
 
 def _register_with_origin(registry_module, repository: Path, url: str) -> None:
-    subprocess.run(["git", "-C", str(repository), "remote", "add", "origin", url],
-                   check=True, capture_output=True, text=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "remote", "add", "origin", url],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     registry_module.ProjectRegistry().register(repository)
 
 
@@ -627,7 +670,9 @@ def test_resume_shows_where_the_project_lives_and_w_opens_it(tmp_path: Path, mon
             await settle(pilot)
             assert "Local only" in app._parts["overview"][0].plain
             app.action_open_web()
-            assert opened == ["https://github.com/kiku/hosted"]  # nothing opened for a local-only repo
+            assert opened == [
+                "https://github.com/kiku/hosted"
+            ]  # nothing opened for a local-only repo
 
     asyncio.run(exercise())
 
@@ -676,13 +721,19 @@ def test_project_keys_explain_themselves_in_the_lobby(tmp_path: Path, monkeypatc
             app = pilot.app
             assert app.check_action("need_project", ("t",)) is True
             assert app.check_action("need_project", ("n",)) is False  # n = New project here
-            assert app.check_action("new_project", ()) is True and app.check_action("clone_project", ()) is True
+            assert (
+                app.check_action("new_project", ()) is True
+                and app.check_action("clone_project", ()) is True
+            )
             await pilot.press("t")  # must not raise or open anything
             assert app.screen is app._main
             app._handle_project_pick(repository)
             await settle(pilot)
             assert app.check_action("need_project", ("t",)) is False
-            assert app.check_action("new_project", ()) is False and app.check_action("clone_project", ()) is False
+            assert (
+                app.check_action("new_project", ()) is False
+                and app.check_action("clone_project", ()) is False
+            )
 
     asyncio.run(exercise())
 
@@ -716,8 +767,12 @@ def test_clone_project_adds_the_clone_to_the_lobby(tmp_path: Path, monkeypatch) 
     source = _init_repo(tmp_path / "source", commit=True)
     bare = tmp_path / "remote" / "cool-repo.git"
     bare.parent.mkdir()
-    subprocess.run(["git", "clone", "-q", "--bare", str(source), str(bare)], check=True,
-                   capture_output=True, text=True)
+    subprocess.run(
+        ["git", "clone", "-q", "--bare", str(source), str(bare)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 
@@ -729,7 +784,9 @@ def test_clone_project_adds_the_clone_to_the_lobby(tmp_path: Path, monkeypatch) 
             assert (workspace / "cool-repo" / "app.py").exists()
             assert app.active_project.name == "cool-repo"
             assert app.query_one("#project-table").row_count == 1
-            app._start_clone({"url": str(bare), "parent": str(workspace)})  # already there: reported, not crashed
+            app._start_clone(
+                {"url": str(bare), "parent": str(workspace)}
+            )  # already there: reported, not crashed
             await settle(pilot)
             assert len(app.registry.list_projects()) == 1
 
@@ -753,7 +810,10 @@ def test_open_in_offers_editor_folder_and_terminal(tmp_path: Path, monkeypatch) 
             await settle(pilot)
             assert app.check_action("open_in", ()) is True  # shown on Resume
             app.action_goto("journal")
-            assert app.check_action("open_in", ()) is False and app.check_action("open_in_any", ()) is True
+            assert (
+                app.check_action("open_in", ()) is False
+                and app.check_action("open_in_any", ()) is True
+            )
             app.action_goto("overview")
             await settle(pilot)
             app.action_open_in()
@@ -761,12 +821,18 @@ def test_open_in_offers_editor_folder_and_terminal(tmp_path: Path, monkeypatch) 
             assert isinstance(app.screen, ChoiceScreen)
             app.screen.dismiss("editor")
             await settle(pilot)
-            assert started and started[-1][0] == "/usr/bin/code" and started[-1][1] == str(repository.resolve())
+            assert (
+                started
+                and started[-1][0] == "/usr/bin/code"
+                and started[-1][1] == str(repository.resolve())
+            )
 
     asyncio.run(exercise())
 
 
-def test_run_lists_detected_commands_and_explains_when_there_are_none(tmp_path: Path, monkeypatch) -> None:
+def test_run_lists_detected_commands_and_explains_when_there_are_none(
+    tmp_path: Path, monkeypatch
+) -> None:
     from breezy_trace.runners import RunCommand
     from breezy_trace.screens import ChoiceScreen
 
@@ -786,7 +852,10 @@ def test_run_lists_detected_commands_and_explains_when_there_are_none(tmp_path: 
 
             app._handle_project_pick(testable)
             await settle(pilot)
-            assert "RUN HERE" in app._parts["overview"][2].plain and "pytest" in app._parts["overview"][2].plain
+            assert (
+                "RUN HERE" in app._parts["overview"][2].plain
+                and "pytest" in app._parts["overview"][2].plain
+            )
             app.action_run_command()
             await settle(pilot)
             assert isinstance(app.screen, ChoiceScreen)

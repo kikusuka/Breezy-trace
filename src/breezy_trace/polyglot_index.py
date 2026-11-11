@@ -63,14 +63,13 @@ IMPORT_NODES = {
 
 def _git_paths(root: Path) -> list[str]:
     suffixes = {
-        extension
-        for extensions in LANGUAGE_EXTENSIONS.values()
-        for extension in extensions
+        extension for extensions in LANGUAGE_EXTENSIONS.values() for extension in extensions
     }
     return git_source_paths(root, suffixes)
 
+
 def _node_text(node: Any, source: bytes) -> str:
-    return source[node.start_byte:node.end_byte].decode("utf-8", errors="replace").strip()
+    return source[node.start_byte : node.end_byte].decode("utf-8", errors="replace").strip()
 
 
 def _node_name(node: Any, source: bytes) -> str:
@@ -92,13 +91,15 @@ def _extract(tree: Any, source: bytes) -> tuple[list[dict[str, Any]], list[dict[
         name = _node_name(node, source) if kind else ""
         next_scope = scope
         if kind and name:
-            symbols.append({
-                "name": name,
-                "qualified_name": ".".join((*scope, name)),
-                "kind": kind,
-                "line": node.start_point.row + 1,
-                "end_line": node.end_point.row + 1,
-            })
+            symbols.append(
+                {
+                    "name": name,
+                    "qualified_name": ".".join((*scope, name)),
+                    "kind": kind,
+                    "line": node.start_point.row + 1,
+                    "end_line": node.end_point.row + 1,
+                }
+            )
             next_scope = (*scope, name)
 
         if node.type in IMPORT_NODES:
@@ -214,9 +215,15 @@ class TreeSitterCodeIndex:
                         """,
                         [
                             (
-                                uuid.uuid4().hex, project.id, relative, item["name"],
-                                item["qualified_name"], item["kind"], item["line"],
-                                item["end_line"], language,
+                                uuid.uuid4().hex,
+                                project.id,
+                                relative,
+                                item["name"],
+                                item["qualified_name"],
+                                item["kind"],
+                                item["line"],
+                                item["end_line"],
+                                language,
                             )
                             for item in symbols
                         ],

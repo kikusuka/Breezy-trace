@@ -64,10 +64,16 @@ def test_lobby_metrics_summarise_all_projects() -> None:
 
 
 def _git(repo: Path, *args: str) -> None:
-    env = {**os.environ, "GIT_AUTHOR_NAME": "Kiku", "GIT_AUTHOR_EMAIL": "k@example.com",
-           "GIT_COMMITTER_NAME": "Kiku", "GIT_COMMITTER_EMAIL": "k@example.com"}
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True,
-                   text=True, env=env)
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "Kiku",
+        "GIT_AUTHOR_EMAIL": "k@example.com",
+        "GIT_COMMITTER_NAME": "Kiku",
+        "GIT_COMMITTER_EMAIL": "k@example.com",
+    }
+    subprocess.run(
+        ["git", "-C", str(repo), *args], check=True, capture_output=True, text=True, env=env
+    )
 
 
 def test_collect_repo_metrics_on_a_real_repository(tmp_path: Path) -> None:

@@ -30,14 +30,14 @@ def make_project(tmp_path: Path):
 def test_indexes_python_symbols_and_imports_without_persisting_source(tmp_path: Path) -> None:
     root, project, db_path = make_project(tmp_path)
     (root / "sample.py").write_text(
-        'import pathlib\nfrom collections import deque\n\n'
-        'class Engine:\n'
-        '    def start(self, value):\n'
-        '        def inner():\n'
-        '            return value\n'
-        '        return inner()\n\n'
-        'async def run_engine():\n'
-        '    return Engine()\n',
+        "import pathlib\nfrom collections import deque\n\n"
+        "class Engine:\n"
+        "    def start(self, value):\n"
+        "        def inner():\n"
+        "            return value\n"
+        "        return inner()\n\n"
+        "async def run_engine():\n"
+        "    return Engine()\n",
         encoding="utf-8",
     )
     index = PythonCodeIndex(db_path)
@@ -53,7 +53,12 @@ def test_indexes_python_symbols_and_imports_without_persisting_source(tmp_path: 
         "Engine.start.inner",
         "run_engine",
     }
-    assert {item["kind"] for item in symbols} >= {"class", "method", "nested_function", "async_function"}
+    assert {item["kind"] for item in symbols} >= {
+        "class",
+        "method",
+        "nested_function",
+        "async_function",
+    }
     assert {item["module"] for item in imports} == {"pathlib", "collections"}
     assert index.index(project)["files_unchanged"] == 1
 
@@ -62,9 +67,7 @@ def test_indexes_python_symbols_and_imports_without_persisting_source(tmp_path: 
     with sqlite3.connect(db_path) as connection:
         stored_tables = {
             row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type = 'table'"
-            )
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         assert "code_symbols" in stored_tables
         assert "sample.py" in {
@@ -153,7 +156,6 @@ def test_index_reuses_one_database_connection_for_many_files(tmp_path: Path, mon
     assert calls == 1
 
 
-
 def test_git_path_discovery_stops_at_candidate_limit(tmp_path: Path, monkeypatch) -> None:
     import breezy_trace.code_index as code_index_module
 
@@ -180,7 +182,6 @@ def test_git_path_discovery_keeps_nul_delimited_filenames(tmp_path: Path) -> Non
     unusual.write_text("def unusual_name():\n    pass\n", encoding="utf-8")
 
     assert code_index_module.git_source_paths(root, {".py"}) == ["line\nbreak.py"]
-
 
 
 def test_source_reader_enforces_byte_limit_without_full_read(tmp_path: Path, monkeypatch) -> None:

@@ -12,7 +12,7 @@ import subprocess
 import threading
 import tokenize
 import uuid
-from contextlib import closing
+from contextlib import closing, suppress
 from pathlib import Path
 
 from breezy_trace.database import connect
@@ -52,13 +52,15 @@ class _SymbolVisitor(ast.NodeVisitor):
     def _add_symbol(self, node: ast.AST, kind: str) -> None:
         name = getattr(node, "name", "")
         qualified = ".".join([*(item[0] for item in self.scope), name])
-        self.symbols.append({
-            "name": name,
-            "qualified_name": qualified,
-            "kind": kind,
-            "line": getattr(node, "lineno", 1),
-            "end_line": getattr(node, "end_lineno", getattr(node, "lineno", 1)),
-        })
+        self.symbols.append(
+            {
+                "name": name,
+                "qualified_name": qualified,
+                "kind": kind,
+                "line": getattr(node, "lineno", 1),
+                "end_line": getattr(node, "end_lineno", getattr(node, "lineno", 1)),
+            }
+        )
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
@@ -91,10 +93,8 @@ def git_source_paths(root: Path, suffixes: set[str]) -> list[str]:
 
     def stop_process() -> None:
         timed_out.set()
-        try:
+        with suppress(ProcessLookupError):
             process.kill()
-        except ProcessLookupError:
-            pass
 
     timer = threading.Timer(DISCOVERY_TIMEOUT_SECONDS, stop_process)
     timer.start()
@@ -108,10 +108,8 @@ def git_source_paths(root: Path, suffixes: set[str]) -> list[str]:
             output_bytes += len(chunk)
             if output_bytes > MAX_DISCOVERY_OUTPUT_BYTES:
                 exceeded = True
-                try:
+                with suppress(ProcessLookupError):
                     process.kill()
-                except ProcessLookupError:
-                    pass
                 break
             pending.extend(chunk)
             while (separator := pending.find(0)) >= 0:
@@ -122,10 +120,8 @@ def git_source_paths(root: Path, suffixes: set[str]) -> list[str]:
                 candidate_count += 1
                 if candidate_count > MAX_DISCOVERED_PATHS:
                     exceeded = True
-                    try:
+                    with suppress(ProcessLookupError):
                         process.kill()
-                    except ProcessLookupError:
-                        pass
                     break
                 decoded = item.decode("utf-8", errors="replace")
                 if Path(decoded).suffix.lower() in suffixes:
@@ -259,8 +255,14 @@ class PythonCodeIndex:
                             """,
                             [
                                 (
-                                    uuid.uuid4().hex, project.id, relative, item["name"],
-                                    item["qualified_name"], item["kind"], item["line"], item["end_line"],
+                                    uuid.uuid4().hex,
+                                    project.id,
+                                    relative,
+                                    item["name"],
+                                    item["qualified_name"],
+                                    item["kind"],
+                                    item["line"],
+                                    item["end_line"],
                                 )
                                 for item in visitor.symbols
                             ],
@@ -332,7 +334,9 @@ class PythonCodeIndex:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def imports(self, project: Project, query: str | None = None, limit: int = 100) -> list[dict[str, object]]:
+    def imports(
+        self, project: Project, query: str | None = None, limit: int = 100
+    ) -> list[dict[str, object]]:
         if not 1 <= limit <= 500:
             raise ValueError("Import list limit must be between 1 and 500.")
         with closing(connect(self.db_path)) as connection, connection:

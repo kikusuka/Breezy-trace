@@ -173,15 +173,39 @@ HELP_KEYS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
             ("↑ ↓", "Move through projects; scroll a page"),
             ("Esc", "Back to the lobby; close any dialog"),
             ("1 … 7", "Resume · Metrics · Journal · Git · Activity · Code · Settings"),
-            ("o", "Add a repository that already exists on this machine (lobby)  ·  CLI: breezy-trace register PATH"),
-            ("n (lobby)", "New project: makes a folder with an empty Git repository and adds it  ·  CLI: breezy-trace new NAME"),
-            ("c (lobby)", "Clone from a GitHub / GitLab / any Git URL and add it  ·  CLI: breezy-trace clone URL"),
-            ("Delete", "Remove the highlighted project from Trace; asks first and never touches your files  ·  CLI: breezy-trace unregister NAME"),
+            (
+                "o",
+                "Add a repository that already exists on this machine (lobby)  ·  CLI: breezy-trace register PATH",
+            ),
+            (
+                "n (lobby)",
+                "New project: makes a folder with an empty Git repository and adds it  ·  CLI: breezy-trace new NAME",
+            ),
+            (
+                "c (lobby)",
+                "Clone from a GitHub / GitLab / any Git URL and add it  ·  CLI: breezy-trace clone URL",
+            ),
+            (
+                "Delete",
+                "Remove the highlighted project from Trace; asks first and never touches your files  ·  CLI: breezy-trace unregister NAME",
+            ),
             ("w", "Open the project's GitHub / GitLab page in your browser (inside a project)"),
-            ("v", "Open the project in your editor (VS Code, Cursor, ...), File Explorer or a terminal (inside a project)"),
-            ("R", "Run one of the project's own commands: pytest, npm scripts, cargo, go, gradle, make, dotnet (inside a project)"),
-            ("u", "Standup across all projects: commits, finished tasks, what is next; press again for 3 and 7 days  ·  CLI: breezy-trace standup [--days N]"),
-            ("/", "Search notes, tasks and decisions in every project  ·  CLI: breezy-trace search QUERY"),
+            (
+                "v",
+                "Open the project in your editor (VS Code, Cursor, ...), File Explorer or a terminal (inside a project)",
+            ),
+            (
+                "R",
+                "Run one of the project's own commands: pytest, npm scripts, cargo, go, gradle, make, dotnet (inside a project)",
+            ),
+            (
+                "u",
+                "Standup across all projects: commits, finished tasks, what is next; press again for 3 and 7 days  ·  CLI: breezy-trace standup [--days N]",
+            ),
+            (
+                "/",
+                "Search notes, tasks and decisions in every project  ·  CLI: breezy-trace search QUERY",
+            ),
             ("r", "Refresh the current view"),
             ("T / F2", "Switch theme: blue / midnight blue (remembered)"),
             ("? / F1", "This help, from anywhere"),
@@ -191,16 +215,28 @@ HELP_KEYS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
     (
         "Do things (inside a project; every key works on every tab)",
         (
-            ("n", "New note  ·  CLI: breezy-trace note \"Title\" --body \"...\""),
-            ("N", "Write a note in your own editor ($VISUAL / $EDITOR)  ·  CLI: breezy-trace note  (no title)"),
-            ("t", "New task  ·  CLI: breezy-trace task \"Title\""),
-            ("d", "Record a decision  ·  CLI: breezy-trace decision \"Title\" \"Decision\""),
+            ("n", 'New note  ·  CLI: breezy-trace note "Title" --body "..."'),
+            (
+                "N",
+                "Write a note in your own editor ($VISUAL / $EDITOR)  ·  CLI: breezy-trace note  (no title)",
+            ),
+            ("t", 'New task  ·  CLI: breezy-trace task "Title"'),
+            ("d", 'Record a decision  ·  CLI: breezy-trace decision "Title" "Decision"'),
             ("x", "Complete a task  ·  CLI: breezy-trace done TASK_ID"),
             ("i", "Index code symbols and imports  ·  CLI: breezy-trace code index"),
             ("a", "Scan the working tree for file activity  ·  CLI: breezy-trace activity scan"),
-            ("s", "Sync Claude Code / OpenCode session metadata  ·  CLI: breezy-trace sessions --sync"),
-            ("m", "Turn TODO/FIXME comments into tasks, never duplicating  ·  CLI: breezy-trace todos [--import]"),
-            ("e", "Export a Markdown handoff for any agent or teammate  ·  CLI: breezy-trace handoff [--out FILE]"),
+            (
+                "s",
+                "Sync Claude Code / OpenCode session metadata  ·  CLI: breezy-trace sessions --sync",
+            ),
+            (
+                "m",
+                "Turn TODO/FIXME comments into tasks, never duplicating  ·  CLI: breezy-trace todos [--import]",
+            ),
+            (
+                "e",
+                "Export a Markdown handoff for any agent or teammate  ·  CLI: breezy-trace handoff [--out FILE]",
+            ),
             ("b", "Back up the local database (any screen)  ·  CLI: breezy-trace backup"),
         ),
     ),
@@ -208,10 +244,22 @@ HELP_KEYS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
         "Also from the shell",
         (
             ("status", "breezy-trace status · inspect · branches · resume"),
-            ("code", "breezy-trace code search QUERY · imports [QUERY] · calls [QUERY] · languages"),
-            ("open", "breezy-trace open [PATH]  adds a folder if needed (offers git init for plain folders) and opens it"),
-            ("explorer", "breezy-trace integrate install|uninstall|status  adds a right-click 'Open with Breezy Trace' to Windows Explorer"),
-            ("prompt", "breezy-trace prompt --init powershell|bash|zsh|starship  prints setup for a prompt that shows the project state"),
+            (
+                "code",
+                "breezy-trace code search QUERY · imports [QUERY] · calls [QUERY] · languages",
+            ),
+            (
+                "open",
+                "breezy-trace open [PATH]  adds a folder if needed (offers git init for plain folders) and opens it",
+            ),
+            (
+                "explorer",
+                "breezy-trace integrate install|uninstall|status  adds a right-click 'Open with Breezy Trace' to Windows Explorer",
+            ),
+            (
+                "prompt",
+                "breezy-trace prompt --init powershell|bash|zsh|starship  prints setup for a prompt that shows the project state",
+            ),
             ("journal", "breezy-trace journal · tasks [--all] · activity log · sessions"),
             ("projects", "breezy-trace register PATH · unregister · projects · restore FILE --yes"),
         ),
@@ -219,13 +267,28 @@ HELP_KEYS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
     (
         "Reading the screen",
         (
-            ("●", "Project state: green clean · amber uncommitted · blue unpushed · coral behind · grey unknown"),
-            (f"± ↑ ↓ {CHECK}", f"± changed files · ↑ commits not pushed · ↓ commits behind upstream · {CHECK} clean"),
+            (
+                "●",
+                "Project state: green clean · amber uncommitted · blue unpushed · coral behind · grey unknown",
+            ),
+            (
+                f"± ↑ ↓ {CHECK}",
+                f"± changed files · ↑ commits not pushed · ↓ commits behind upstream · {CHECK} clean",
+            ),
             ("30 DAYS", "Commits per 3-day block; taller (or darker) is busier (sparkline)"),
-            ("■ grid", "Commits per week for 12 weeks; darker blue is busier, scaled across all projects"),
-            ("Since you…", "Resume: commits, authors and line changes since you last opened the project"),
+            (
+                "■ grid",
+                "Commits per week for 12 weeks; darker blue is busier, scaled across all projects",
+            ),
+            (
+                "Since you…",
+                "Resume: commits, authors and line changes since you last opened the project",
+            ),
             ("Branch graph", "Git tab: commit lanes with branch, remote and tag labels"),
-            ("Dependency map", "Code tab (after indexing): which Python modules import which, hubs and cycles"),
+            (
+                "Dependency map",
+                "Code tab (after indexing): which Python modules import which, hubs and cycles",
+            ),
             ("TODO / FIXME", "Metrics tab: comment markers found by git grep in tracked files"),
             ("Streak", "Consecutive days with a commit; a quiet today does not break it yet"),
             ("Churn", "Lines added and removed over 30 days, summed from Git history"),

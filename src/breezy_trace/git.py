@@ -47,9 +47,7 @@ def run_git(
 
 def inspect_status(path: Path) -> GitStatus:
     """Read a concise Git status without changing repository state."""
-    command = _run(
-        path, "status", "--porcelain=v1", "--branch", "--ahead-behind", "-z"
-    )
+    command = _run(path, "status", "--porcelain=v1", "--branch", "--ahead-behind", "-z")
     if command is None:
         return GitStatus.unavailable("Git is unavailable or the status command timed out.")
     if command.returncode != 0:
@@ -62,9 +60,7 @@ def inspect_status(path: Path) -> GitStatus:
     branch_line = records[0] if records else "## unknown"
     branch_info = branch_line.removeprefix("## ")
     if branch_info.startswith("No commits yet on "):
-        branch = _clean_terminal_text(
-            branch_info.removeprefix("No commits yet on ").strip()
-        )
+        branch = _clean_terminal_text(branch_info.removeprefix("No commits yet on ").strip())
     elif branch_info.startswith("HEAD (no branch)"):
         branch = "detached HEAD"
     else:
@@ -102,8 +98,10 @@ def inspect_status(path: Path) -> GitStatus:
             index += 1
 
     total = staged + modified + untracked
-    summary = "Working tree clean" if total == 0 else (
-        f"{staged} staged · {modified} modified · {untracked} untracked"
+    summary = (
+        "Working tree clean"
+        if total == 0
+        else (f"{staged} staged · {modified} modified · {untracked} untracked")
     )
     return GitStatus(
         branch=branch or "unknown",
@@ -115,6 +113,7 @@ def inspect_status(path: Path) -> GitStatus:
         clean=total == 0,
         summary=summary,
     )
+
 
 def recent_commits(path: Path, limit: int = 5) -> list[dict[str, str]]:
     """Return recent local commits without fetching or changing repository state."""
@@ -142,8 +141,11 @@ def inspect_details(path: Path) -> dict[str, object]:
     status = _run(path, "status", "--porcelain=v1", "-z", "--untracked-files=all")
     if status is None or status.returncode != 0:
         return {
-            "available": False, "conflicts": 0, "stashes": 0,
-            "staged_diff": "", "unstaged_diff": "",
+            "available": False,
+            "conflicts": 0,
+            "stashes": 0,
+            "staged_diff": "",
+            "unstaged_diff": "",
         }
     records = status.stdout.split("\0")
     conflicts = 0
@@ -158,17 +160,13 @@ def inspect_details(path: Path) -> dict[str, object]:
     stash = _run(path, "stash", "list")
     staged = _run(path, "diff", "--cached", "--stat")
     unstaged = _run(path, "diff", "--stat")
-    complete = all(
-        item is not None and item.returncode == 0 for item in (stash, staged, unstaged)
-    )
+    complete = all(item is not None and item.returncode == 0 for item in (stash, staged, unstaged))
     return {
         "available": complete,
         "conflicts": conflicts,
         "stashes": len(stash.stdout.splitlines()) if stash and stash.returncode == 0 else 0,
         "staged_diff": (
-            _clean_terminal_text(staged.stdout.strip())
-            if staged and staged.returncode == 0
-            else ""
+            _clean_terminal_text(staged.stdout.strip()) if staged and staged.returncode == 0 else ""
         ),
         "unstaged_diff": (
             _clean_terminal_text(unstaged.stdout.strip())
@@ -197,9 +195,7 @@ def branch_intelligence(path: Path) -> dict[str, object]:
     current_value = run("branch", "--show-current") or None
     current = _clean_terminal_text(current_value) if current_value else None
     detached = available and current is None
-    upstream_value = run(
-        "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"
-    )
+    upstream_value = run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
     upstream = _clean_terminal_text(upstream_value) if upstream_value else None
     ahead = behind = None
     unpushed: list[dict[str, str]] = []
@@ -211,11 +207,10 @@ def branch_intelligence(path: Path) -> dict[str, object]:
             if len(values) == 2 and all(value.isdigit() for value in values):
                 ahead, behind = int(values[0]), int(values[1])
         for destination, revision in (
-            (unpushed, f"{upstream}..HEAD"), (remote_only, f"HEAD..{upstream}")
+            (unpushed, f"{upstream}..HEAD"),
+            (remote_only, f"HEAD..{upstream}"),
         ):
-            output = run(
-                "log", "-20", "--date=short", "--format=%h%x1f%ad%x1f%s", revision
-            )
+            output = run("log", "-20", "--date=short", "--format=%h%x1f%ad%x1f%s", revision)
             if output:
                 for line in output.splitlines():
                     parts = line.split(chr(31), 2)
@@ -250,9 +245,7 @@ def branch_intelligence(path: Path) -> dict[str, object]:
     for line in stash_output.splitlines():
         fields = line.split(chr(31), 1)
         if len(fields) == 2:
-            stashes.append(
-                {"ref": fields[0], "subject": _clean_terminal_text(fields[1])}
-            )
+            stashes.append({"ref": fields[0], "subject": _clean_terminal_text(fields[1])})
 
     return {
         "available": available and time.monotonic() < deadline,
@@ -277,8 +270,13 @@ def commit_activity(path: Path, days: int = 84) -> dict[date, int]:
     Stashes and tags are deliberately excluded so the counts reflect real work.
     """
     command = _run(
-        path, "log", "--branches", "--remotes", f"--since={days} days ago",
-        "--date=short", "--format=%ad",
+        path,
+        "log",
+        "--branches",
+        "--remotes",
+        f"--since={days} days ago",
+        "--date=short",
+        "--format=%ad",
     )
     if command is None or command.returncode != 0:
         return {}
@@ -295,8 +293,14 @@ def commit_activity(path: Path, days: int = 84) -> dict[date, int]:
 def hot_files(path: Path, days: int = 30, limit: int = 5) -> list[tuple[str, int]]:
     """Most frequently changed paths in recent history, most changed first."""
     command = _run(
-        path, "log", "--branches", "--remotes", f"--since={days} days ago",
-        "--name-only", "--format=", "--no-renames",
+        path,
+        "log",
+        "--branches",
+        "--remotes",
+        f"--since={days} days ago",
+        "--name-only",
+        "--format=",
+        "--no-renames",
     )
     if command is None or command.returncode != 0:
         return []
@@ -322,8 +326,17 @@ def parse_graph_line(line: str) -> tuple[str, str, list[str], str]:
 def commit_graph(path: Path, limit: int = 24) -> list[str]:
     """ASCII commit graph of local branches, cached remotes and HEAD (read-only)."""
     command = _run(
-        path, "log", "--graph", "--oneline", "--decorate", "--color=never",
-        "--branches", "--remotes", "HEAD", "-n", str(limit),
+        path,
+        "log",
+        "--graph",
+        "--oneline",
+        "--decorate",
+        "--color=never",
+        "--branches",
+        "--remotes",
+        "HEAD",
+        "-n",
+        str(limit),
     )
     if command is None or command.returncode != 0:
         return []
@@ -368,4 +381,3 @@ def changed_files(path: Path, limit: int = 12) -> tuple[int, list[tuple[str, str
         return 0, []
     changes = parse_porcelain_z(command.stdout)
     return len(changes), changes[:limit]
-

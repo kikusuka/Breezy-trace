@@ -119,7 +119,6 @@ def test_backup_handles_uri_special_characters_in_paths(tmp_path: Path) -> None:
     assert len(projects) == 1
 
 
-
 def test_restore_refuses_database_with_wal_sidecars(tmp_path: Path) -> None:
     backup = tmp_path / "backup.sqlite3"
     destination = tmp_path / "live.sqlite3"

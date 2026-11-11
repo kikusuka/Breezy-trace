@@ -69,7 +69,9 @@ def test_entry_points_fan_in_and_tree_rendering() -> None:
     labels = [(prefix, name) for prefix, name, _ in rows]
     assert labels[1] == ("└─ ", "pkg.app")
     assert ("   ├─ ", "pkg.git") in labels and ("   └─ ", "pkg.util") in labels
-    cyclic = build_dependency_graph(FILES, [("src/pkg/app.py", "pkg.git"), ("src/pkg/git.py", "pkg.app")])
+    cyclic = build_dependency_graph(
+        FILES, [("src/pkg/app.py", "pkg.git"), ("src/pkg/git.py", "pkg.app")]
+    )
     notes = [note for _p, _n, note in cyclic.tree("src/pkg/app.py")]
     assert "cycle" in notes
     wide = build_dependency_graph(
@@ -129,7 +131,9 @@ def test_edit_text_runs_the_configured_editor(tmp_path: Path, monkeypatch) -> No
 def _repo(path: Path) -> Path:
     path.mkdir(parents=True)
     subprocess.run(["git", "init", str(path)], check=True, capture_output=True, text=True)
-    (path / "app.py").write_text("# TODO: first thing\nx = 1\n# FIXME: second thing\n", encoding="utf-8")
+    (path / "app.py").write_text(
+        "# TODO: first thing\nx = 1\n# FIXME: second thing\n", encoding="utf-8"
+    )
     subprocess.run(["git", "-C", str(path), "add", "."], check=True, capture_output=True, text=True)
     return path
 
@@ -144,8 +148,15 @@ def test_import_todos_creates_tasks_once(tmp_path: Path) -> None:
     assert titles == ["# FIXME: second thing  [app.py]", "# TODO: first thing  [app.py]"]
     again = actions.import_todos(db, project)
     assert again.startswith("Imported 0 tasks") and "2 already tracked" in again
-    (tmp_path / "proj" / "more.py").write_text("\n".join(f"# TODO: item {i}" for i in range(5)), encoding="utf-8")
-    subprocess.run(["git", "-C", str(tmp_path / "proj"), "add", "."], check=True, capture_output=True, text=True)
+    (tmp_path / "proj" / "more.py").write_text(
+        "\n".join(f"# TODO: item {i}" for i in range(5)), encoding="utf-8"
+    )
+    subprocess.run(
+        ["git", "-C", str(tmp_path / "proj"), "add", "."],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     capped = actions.import_todos(db, project, limit=3)
     assert "Imported 3 tasks" in capped and "2 more waiting" in capped
 

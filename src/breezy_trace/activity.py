@@ -70,7 +70,12 @@ class FileActivityStore:
         try:
             result = subprocess.run(
                 [
-                    "git", "-C", project.path, "status", "--porcelain=v1", "-z",
+                    "git",
+                    "-C",
+                    project.path,
+                    "status",
+                    "--porcelain=v1",
+                    "-z",
                     "--untracked-files=all",
                 ],
                 capture_output=True,
@@ -79,7 +84,9 @@ class FileActivityStore:
                 env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
             )
         except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as error:
-            raise RuntimeError("Git status is unavailable or timed out for this project.") from error
+            raise RuntimeError(
+                "Git status is unavailable or timed out for this project."
+            ) from error
         if result.returncode != 0:
             message = result.stderr.decode("utf-8", errors="replace").strip()
             message = re.sub(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]", "�", message)
@@ -111,7 +118,11 @@ class FileActivityStore:
                     VALUES (?, ?, NULL, ?, ?, ?, ?)
                     """,
                     (
-                        uuid.uuid4().hex, project.id, path, event_type, observed_at,
+                        uuid.uuid4().hex,
+                        project.id,
+                        path,
+                        event_type,
+                        observed_at,
                         f"git status --porcelain=v1 reported {status_code!r}",
                     ),
                 )
@@ -165,9 +176,8 @@ class FileActivityStore:
         return {
             "paths": len(snapshot),
             "events_created": events_created,
-            "unchanged": len(snapshot) - sum(
-                1 for path, (status, _) in snapshot.items() if previous.get(path) != status
-            ),
+            "unchanged": len(snapshot)
+            - sum(1 for path, (status, _) in snapshot.items() if previous.get(path) != status),
         }
 
     def list_events(self, project: Project, limit: int = 30) -> list[dict[str, str]]:

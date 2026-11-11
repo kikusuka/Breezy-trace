@@ -52,9 +52,7 @@ def _make_legacy_database(path: Path, version: int) -> None:
 
 
 @pytest.mark.parametrize("old_version", [1, 2, 3])
-def test_existing_database_migrates_to_current_schema(
-    tmp_path: Path, old_version: int
-) -> None:
+def test_existing_database_migrates_to_current_schema(tmp_path: Path, old_version: int) -> None:
     path = tmp_path / f"legacy-v{old_version}.sqlite3"
     _make_legacy_database(path, old_version)
 
@@ -64,9 +62,7 @@ def test_existing_database_migrates_to_current_schema(
 
         tables = {
             row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type = 'table'"
-            )
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         assert {
             "projects",
@@ -85,20 +81,18 @@ def test_existing_database_migrates_to_current_schema(
         }.issubset(tables)
 
         for table in ("code_indexed_files", "code_symbols", "code_imports"):
-            columns = {
-                row[1] for row in connection.execute(f"PRAGMA table_info({table})")
-            }
+            columns = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
             assert "language" in columns
-            assert connection.execute(
-                f"SELECT COUNT(*) FROM {table}"
-            ).fetchone()[0] == 0
+            assert connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
 
-        assert connection.execute(
-            "SELECT name FROM projects WHERE id = 'project-1'"
-        ).fetchone()[0] == "preserved"
-        assert connection.execute(
-            "SELECT body FROM journal_entries WHERE id = 'note-1'"
-        ).fetchone()[0] == "Original journal data"
+        assert (
+            connection.execute("SELECT name FROM projects WHERE id = 'project-1'").fetchone()[0]
+            == "preserved"
+        )
+        assert (
+            connection.execute("SELECT body FROM journal_entries WHERE id = 'note-1'").fetchone()[0]
+            == "Original journal data"
+        )
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
     finally:
         connection.close()

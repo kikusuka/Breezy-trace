@@ -95,9 +95,7 @@ class JournalStore:
             )
         return cursor.rowcount == 1
 
-    def add_decision(
-        self, project: Project, title: str, decision: str, context: str = ""
-    ) -> str:
+    def add_decision(self, project: Project, title: str, decision: str, context: str = "") -> str:
         title, decision = title.strip(), decision.strip()
         if not title or not decision:
             raise ValueError("A decision needs both a title and a decision.")
@@ -145,6 +143,7 @@ class JournalStore:
     def totals(self) -> dict[str, int]:
         """Counts across every registered project, for the lobby."""
         with closing(connect(self.db_path)) as connection, connection:
+
             def count(sql: str) -> int:
                 return int(connection.execute(sql).fetchone()[0])
 
@@ -210,6 +209,7 @@ class JournalStore:
     def project_counts(self, project: Project) -> dict[str, int]:
         """What removing ``project`` from Trace would delete from the database."""
         with closing(connect(self.db_path)) as connection, connection:
+
             def count(sql: str) -> int:
                 return int(connection.execute(sql, (project.id,)).fetchone()[0])
 
@@ -223,4 +223,3 @@ class JournalStore:
                 ),
                 "decisions": count("SELECT COUNT(*) FROM project_decisions WHERE project_id = ?"),
             }
-

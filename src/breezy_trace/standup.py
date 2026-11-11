@@ -40,8 +40,14 @@ def commits_since(
 ) -> list[tuple[str, str, str]]:
     stamp = since.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S +0000")
     args = [
-        "log", "--branches", "--remotes", f"--since={stamp}", "--no-merges",
-        "-n", str(MAX_COMMITS), "--format=%h%x09%as%x09%s",
+        "log",
+        "--branches",
+        "--remotes",
+        f"--since={stamp}",
+        "--no-merges",
+        "-n",
+        str(MAX_COMMITS),
+        "--format=%h%x09%as%x09%s",
     ]
     email = _my_email(path) if mine_only else ""
     if email:

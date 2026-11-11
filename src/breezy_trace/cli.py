@@ -49,9 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Local-first project memory and development intelligence.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument(
-        "--no-intro", action="store_true", help="Skip the animated boot sequence."
-    )
+    parser.add_argument("--no-intro", action="store_true", help="Skip the animated boot sequence.")
     commands = parser.add_subparsers(dest="command")
 
     register = commands.add_parser("register", help="Register a local Git project.")
@@ -65,14 +63,24 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("home", help="Open the global project dashboard.")
 
     backup = commands.add_parser("backup", help="Create a portable backup of local project data.")
-    backup.add_argument("--output", type=Path, help="Backup file path (defaults to app data directory).")
+    backup.add_argument(
+        "--output", type=Path, help="Backup file path (defaults to app data directory)."
+    )
 
     restore = commands.add_parser("restore", help="Restore project data from a backup.")
     restore.add_argument("backup", type=Path, help="Path to a Breezy Trace .sqlite3 backup.")
-    restore.add_argument("--yes", action="store_true", help="Confirm replacing the current local database.")
+    restore.add_argument(
+        "--yes", action="store_true", help="Confirm replacing the current local database."
+    )
     commands.add_parser("status", help="Show read-only Git status for the current project.")
-    commands.add_parser("inspect", help="Show detailed read-only Git changes, conflicts, and stashes.")
-    commands.add_parser("branches", aliases=["git"], help="Show local branches, upstream state, and cached remote commits.")
+    commands.add_parser(
+        "inspect", help="Show detailed read-only Git changes, conflicts, and stashes."
+    )
+    commands.add_parser(
+        "branches",
+        aliases=["git"],
+        help="Show local branches, upstream state, and cached remote commits.",
+    )
     commands.add_parser("resume", help="Show the context needed to resume the current project.")
     handoff = commands.add_parser(
         "handoff", help="Print a Markdown summary to paste into any agent or hand to a teammate."
@@ -82,7 +90,9 @@ def build_parser() -> argparse.ArgumentParser:
         "todos", help="List TODO/FIXME comments in tracked files, or turn them into tasks."
     )
     todos.add_argument(
-        "--import", dest="import_tasks", action="store_true",
+        "--import",
+        dest="import_tasks",
+        action="store_true",
         help="Create a task for each comment that is not already tracked.",
     )
     open_cmd = commands.add_parser(
@@ -97,16 +107,22 @@ def build_parser() -> argparse.ArgumentParser:
         "new", help="Create a new project: a folder with an empty Git repository, registered."
     )
     new.add_argument("name", help="Project (folder) name.")
-    new.add_argument("--in", dest="directory", type=Path, help="Create it inside this folder (default: here).")
+    new.add_argument(
+        "--in", dest="directory", type=Path, help="Create it inside this folder (default: here)."
+    )
     clone = commands.add_parser(
         "clone", help="Clone a GitHub / GitLab / any Git URL and register it."
     )
     clone.add_argument("url", help="Repository URL, e.g. https://github.com/owner/repo.git")
-    clone.add_argument("--into", dest="directory", type=Path, help="Clone inside this folder (default: here).")
+    clone.add_argument(
+        "--into", dest="directory", type=Path, help="Clone inside this folder (default: here)."
+    )
     standup = commands.add_parser(
         "standup", help="Markdown standup of your commits, finished tasks and what is next."
     )
-    standup.add_argument("--days", type=int, default=1, help="Look back this many days (default 1).")
+    standup.add_argument(
+        "--days", type=int, default=1, help="Look back this many days (default 1)."
+    )
     standup.add_argument(
         "--all-authors", action="store_true", help="Include everyone's commits, not just yours."
     )
@@ -140,26 +156,46 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("journal", help="Show recent notes for the current project.")
     activity = commands.add_parser("activity", help="Scan and review metadata-only file activity.")
     activity_commands = activity.add_subparsers(dest="activity_command", required=True)
-    activity_commands.add_parser("scan", help="Take an explicit read-only Git working-tree snapshot.")
-    activity_log = activity_commands.add_parser("log", help="Show recorded file activity transitions.")
-    activity_log.add_argument("--limit", type=int, default=30, help="Maximum events to show (1-500).")
+    activity_commands.add_parser(
+        "scan", help="Take an explicit read-only Git working-tree snapshot."
+    )
+    activity_log = activity_commands.add_parser(
+        "log", help="Show recorded file activity transitions."
+    )
+    activity_log.add_argument(
+        "--limit", type=int, default=30, help="Maximum events to show (1-500)."
+    )
 
     code = commands.add_parser("code", help="Index and search source symbols and imports.")
     code_commands = code.add_subparsers(dest="code_command", required=True)
-    code_commands.add_parser("index", help="Explicitly index supported languages from Git-listed files.")
-    code_search = code_commands.add_parser("search", help="Search indexed symbol names across languages.")
+    code_commands.add_parser(
+        "index", help="Explicitly index supported languages from Git-listed files."
+    )
+    code_search = code_commands.add_parser(
+        "search", help="Search indexed symbol names across languages."
+    )
     code_search.add_argument("query")
     code_search.add_argument("--limit", type=int, default=50)
-    calls = code_commands.add_parser("calls", help="Show syntactic Python call sites with explicit uncertainty.")
+    calls = code_commands.add_parser(
+        "calls", help="Show syntactic Python call sites with explicit uncertainty."
+    )
     calls.add_argument("query", nargs="?", help="Filter by caller or callee name.")
     calls.add_argument("--limit", type=int, default=100)
     code_commands.add_parser("languages", help="Show built-in and optional language support.")
-    code_imports = code_commands.add_parser("imports", help="List indexed imports, optionally filtered by module.")
+    code_imports = code_commands.add_parser(
+        "imports", help="List indexed imports, optionally filtered by module."
+    )
     code_imports.add_argument("query", nargs="?")
     code_imports.add_argument("--limit", type=int, default=100)
 
-    sessions = commands.add_parser("sessions", help="List detected coding-agent sessions for this project.")
-    sessions.add_argument("--sync", action="store_true", help="Discover local Claude Code and OpenCode session metadata first.")
+    sessions = commands.add_parser(
+        "sessions", help="List detected coding-agent sessions for this project."
+    )
+    sessions.add_argument(
+        "--sync",
+        action="store_true",
+        help="Discover local Claude Code and OpenCode session metadata first.",
+    )
 
     decision = commands.add_parser("decision", help="Record a project decision.")
     decision.add_argument("title")
@@ -172,8 +208,7 @@ def _current_project(parser: argparse.ArgumentParser, registry: ProjectRegistry)
     project = registry.find_by_path(Path.cwd())
     if project is None:
         parser.error(
-            "The current directory is not a registered Git project. "
-            "Run: breezy-trace register ."
+            "The current directory is not a registered Git project. Run: breezy-trace register ."
         )
     return project
 
@@ -211,7 +246,9 @@ def _print_resume(project, registry: ProjectRegistry) -> None:
     sessions = AgentSessionStore(registry.db_path).list_sessions(project, limit=5)
     print("\nRECENT AGENT SESSIONS")
     for session in sessions:
-        print(f"- {session['provider']} {session['external_id']} ({session['started_at'] or 'unknown start'})")
+        print(
+            f"- {session['provider']} {session['external_id']} ({session['started_at'] or 'unknown start'})"
+        )
     if not sessions:
         print("- No sessions indexed. Run: breezy-trace sessions --sync")
 
@@ -228,7 +265,19 @@ def main() -> None:
     args, remainder = parser.parse_known_args()
     registry = ProjectRegistry()
 
-    if args.command in {"note", "task", "tasks", "done", "journal", "decision", "sessions", "activity", "code", "handoff", "todos"}:
+    if args.command in {
+        "note",
+        "task",
+        "tasks",
+        "done",
+        "journal",
+        "decision",
+        "sessions",
+        "activity",
+        "code",
+        "handoff",
+        "todos",
+    }:
         project = _current_project(parser, registry)
         store = JournalStore(registry.db_path)
         try:
@@ -261,7 +310,9 @@ def main() -> None:
                     if not records:
                         print("No Python call sites found.")
                     for item in records:
-                        print(f"{item['path']}:{item['line']}  {item['caller']} -> {item['callee']} [{item['resolution']}]")
+                        print(
+                            f"{item['path']}:{item['line']}  {item['caller']} -> {item['callee']} [{item['resolution']}]"
+                        )
                     print("Note: call sites are syntactic observations; targets are not resolved.")
                 elif args.code_command == "languages":
                     print("Built-in: Python")
@@ -304,7 +355,9 @@ def main() -> None:
                     if not records:
                         print("No file activity recorded. Run: breezy-trace activity scan")
                     for record in records:
-                        print(f"{record['observed_at']}  {record['event_type']:<20} {record['path']}")
+                        print(
+                            f"{record['observed_at']}  {record['event_type']:<20} {record['path']}"
+                        )
                 return
             if args.command == "note":
                 title, body = args.title, args.body
@@ -344,12 +397,16 @@ def main() -> None:
                 session_store = AgentSessionStore(registry.db_path)
                 if args.sync:
                     count = session_store.sync(project)
-                    print(f"Scanned local agent indexes; {count} session records inserted or refreshed.")
+                    print(
+                        f"Scanned local agent indexes; {count} session records inserted or refreshed."
+                    )
                 records = session_store.list_sessions(project)
                 if not records:
                     print("No agent sessions found. Run: breezy-trace sessions --sync")
                 for record in records:
-                    print(f"- {record['provider']}  {record['external_id']}  {record['started_at'] or 'unknown start'}")
+                    print(
+                        f"- {record['provider']}  {record['external_id']}  {record['started_at'] or 'unknown start'}"
+                    )
                     metadata = record["metadata"]
                     if metadata.get("git_branch"):
                         print(f"  Branch: {metadata['git_branch']}")
@@ -387,8 +444,10 @@ def main() -> None:
             for command in integrate.install(winreg):
                 print(f"Registered: {command}")
             print("Right-click a folder in Explorer and choose 'Open with Breezy Trace'.")
-            print("(Windows 11: under 'Show more options'.) Re-run this if you move or recreate "
-                  "the Python environment.")
+            print(
+                "(Windows 11: under 'Show more options'.) Re-run this if you move or recreate "
+                "the Python environment."
+            )
         elif args.action == "uninstall":
             print(f"Removed {integrate.uninstall(winreg)} registry entries.")
         else:
@@ -397,6 +456,7 @@ def main() -> None:
         return
 
     if args.command == "open":
+
         def confirm_init(message: str) -> bool:
             if not sys.stdin.isatty():
                 return False
@@ -453,11 +513,16 @@ def main() -> None:
         if not rows:
             print("No matches.")
         for row in rows:
-            print(f"{row['created_at'][:10]}  {row['project_name']}  [{row['kind']}] {row['title']}")
+            print(
+                f"{row['created_at'][:10]}  {row['project_name']}  [{row['kind']}] {row['title']}"
+            )
         return
 
     if args.command == "backup":
-        target = args.output or (data_dir() / f"breezy-trace-backup-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.sqlite3")
+        target = args.output or (
+            data_dir()
+            / f"breezy-trace-backup-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.sqlite3"
+        )
         try:
             backup_database(database_path(), target)
         except (OSError, ValueError, RuntimeError) as error:
@@ -467,7 +532,9 @@ def main() -> None:
 
     if args.command == "restore":
         if not args.yes:
-            parser.error("Restore replaces the current local database. Re-run with --yes after making a backup.")
+            parser.error(
+                "Restore replaces the current local database. Re-run with --yes after making a backup."
+            )
         try:
             restore_database(args.backup, database_path())
         except (OSError, ValueError, RuntimeError) as error:
@@ -532,7 +599,9 @@ def main() -> None:
             if not details["upstream_only_commits"]:
                 print("- None detected (or no upstream configured).")
             print(f"\nStashes: {len(details['stashes'])}")
-            print("Remote branch data is from local cached refs; run git fetch yourself to refresh.")
+            print(
+                "Remote branch data is from local cached refs; run git fetch yourself to refresh."
+            )
         elif args.command == "inspect":
             status = inspect_status(Path(project.path))
             details = inspect_details(Path(project.path))
@@ -558,9 +627,11 @@ def main() -> None:
                     root = registry.resolve_git_root(target)
                 except ProjectError as error:
                     parser.error(str(error))
-                answer = input(
-                    f"'{root}' is not registered. Register and open it? [y/N] "
-                ).strip().lower()
+                answer = (
+                    input(f"'{root}' is not registered. Register and open it? [y/N] ")
+                    .strip()
+                    .lower()
+                )
                 if answer not in {"y", "yes"}:
                     _run_tui(args)
                     return
@@ -583,9 +654,11 @@ def main() -> None:
             except ProjectError:
                 root = None
             if root is not None:
-                answer = input(
-                    f"'{root}' is not registered. Register and open it? [y/N] "
-                ).strip().lower()
+                answer = (
+                    input(f"'{root}' is not registered. Register and open it? [y/N] ")
+                    .strip()
+                    .lower()
+                )
                 if answer in {"y", "yes"}:
                     try:
                         project = registry.register(root)

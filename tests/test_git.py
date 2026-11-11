@@ -75,9 +75,12 @@ def test_git_status_labels_detached_head(tmp_path: Path) -> None:
     subprocess.run(["git", "-C", str(tmp_path), "add", "file.txt"], check=True)
     subprocess.run(
         ["git", "-C", str(tmp_path), "commit", "-m", "initial"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
-    subprocess.run(["git", "-C", str(tmp_path), "checkout", "--detach"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "checkout", "--detach"], check=True, capture_output=True
+    )
 
     assert inspect_status(tmp_path).branch == "detached HEAD"
 
@@ -94,7 +97,6 @@ def test_git_status_handles_missing_git(monkeypatch, tmp_path: Path) -> None:
     status = inspect_status(tmp_path)
     assert status.clean is False
     assert "unavailable" in status.summary.lower() or "unavailable" in status.branch.lower()
-
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Windows filenames cannot contain newlines")

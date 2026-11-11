@@ -14,7 +14,9 @@ def make_project(tmp_path: Path):
     root.mkdir()
     subprocess.run(["git", "init", str(root)], check=True, capture_output=True)
     subprocess.run(["git", "-C", str(root), "config", "user.name", "Trace Test"], check=True)
-    subprocess.run(["git", "-C", str(root), "config", "user.email", "trace@example.invalid"], check=True)
+    subprocess.run(
+        ["git", "-C", str(root), "config", "user.email", "trace@example.invalid"], check=True
+    )
     db_path = tmp_path / "trace.sqlite3"
     project = ProjectRegistry(db_path).register(root)
     return root, project, db_path
@@ -50,9 +52,7 @@ def test_scan_records_only_state_transitions_and_clean_transition(tmp_path: Path
 
 def test_porcelain_parser_handles_spaces_newlines_and_rename_records() -> None:
     parsed = _parse_porcelain(
-        b"?? file with spaces.txt\0"
-        b"?? line\nbreak.txt\0"
-        b"R  renamed target.txt\0old name.txt\0"
+        b"?? file with spaces.txt\0?? line\nbreak.txt\0R  renamed target.txt\0old name.txt\0"
     )
     assert set(parsed) == {"file with spaces.txt", "line\nbreak.txt", "renamed target.txt"}
     assert parsed["renamed target.txt"] == ("R ", "renamed")
@@ -98,7 +98,6 @@ def test_scan_rejects_unregistered_project(tmp_path: Path) -> None:
         FileActivityStore(db_path).scan(project)
 
 
-
 def test_scan_prunes_activity_events_older_than_90_days(tmp_path: Path) -> None:
     _root, project, db_path = make_project(tmp_path)
     with closing(connect(db_path)) as connection, connection:
@@ -118,7 +117,6 @@ def test_scan_prunes_activity_events_older_than_90_days(tmp_path: Path) -> None:
             "SELECT COUNT(*) FROM file_events WHERE id = 'old-event'"
         ).fetchone()[0]
     assert remaining == 0
-
 
 
 def test_scan_sanitizes_git_error_terminal_controls(tmp_path: Path, monkeypatch) -> None:

@@ -16,7 +16,9 @@ def data_dir() -> Path:
     separate data folder without touching the user's real database.
     """
     override = os.environ.get("BREEZY_TRACE_DATA_DIR")
-    path = Path(override).expanduser() if override else user_data_path("breezy-trace", "Breezy Labs")
+    path = (
+        Path(override).expanduser() if override else user_data_path("breezy-trace", "Breezy Labs")
+    )
     path.mkdir(parents=True, exist_ok=True)
     return path
 

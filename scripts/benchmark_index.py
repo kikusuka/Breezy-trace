@@ -48,9 +48,7 @@ def main() -> None:
                 f"def build_{number}():\n"
                 f"    return Component{number}()\n"
             )
-            (project_root / f"module_{number:05d}.py").write_text(
-                source, encoding="utf-8"
-            )
+            (project_root / f"module_{number:05d}.py").write_text(source, encoding="utf-8")
 
         project = ProjectRegistry(database).register(project_root)
         index = PythonCodeIndex(database)

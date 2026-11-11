@@ -45,7 +45,9 @@ def file_manager_command(path: Path, platform: str | None = None) -> list[str]:
     return ["xdg-open", str(path)]
 
 
-def terminal_command(path: Path, platform: str | None = None, which=shutil.which) -> list[str] | None:
+def terminal_command(
+    path: Path, platform: str | None = None, which=shutil.which
+) -> list[str] | None:
     platform = platform or sys.platform
     if platform == "win32":
         if which("wt"):
@@ -62,8 +64,11 @@ def terminal_command(path: Path, platform: str | None = None, which=shutil.which
 def _spawn(command: list[str], cwd: Path | None = None) -> None:
     try:
         subprocess.Popen(
-            command, cwd=cwd, stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            command,
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
     except OSError as error:
         raise LaunchError(f"Could not start {command[0]!r}: {error}") from error
