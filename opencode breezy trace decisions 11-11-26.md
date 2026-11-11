@@ -41,6 +41,15 @@ Release branch: `release/prepare-first-release`
 29. **Real local list:** remained unchanged with `DELL`, `cyrrus`, and `Breezy-trace` after the rebuilt test run.
 30. **Handoff updated:** a new “Update — 12/11/26” section in the handoff note gives the new folder, new branch, commit list, test/build results, and the instruction to use the new branch for the pull request.
 31. **Publishing:** still on hold. Nothing was pushed, tagged, released, or uploaded. The owner will decide on publishing after the pull request and CI checks pass.
+32. **Professional release polish approved:** the owner asked to clean the code enough for a professional PyPI release and to prepare the release details.
+33. **README rewritten:** install instructions now lead with `pip install breezy-trace`, followed by a structured quick start, keyboard reference, CLI reference, data/privacy notes, development commands, and scope/limitations. The old run-on paragraph and duplicate sentence were removed.
+34. **Release documents added:** `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`, and `MANIFEST.in`. The source package now includes the release documents, tests, and benchmark script.
+35. **Metadata hardened:** setuptools requirement raised to 77 for PEP 639 license files; added maintainer, license files, documentation and changelog links; added supported upper bounds for `platformdirs`, `textual`, and `rich`.
+36. **Codebase formatted:** `ruff format` applied to the project. Small `try`/`except`/`pass` blocks in `app.py`, `code_index.py`, and `settings.py` were replaced with `contextlib.suppress`. The lint configuration now enables import sorting, bugbear, blind-exception, pyupgrade, simplify, comprehension, and unused-`noqa` checks.
+37. **CI hardened:** CI and the publish workflow now run `pip check` and `ruff format --check` before lint and tests. The release checklist requires formatting and changelog checks.
+38. **Verification after polish:** `ruff format --check .` passed; `ruff check .` passed; tests passed with **164 passed, 2 skipped**; wheel and source package rebuilt; `twine check` passed both; clean install passed `pip check` and all three help commands; isolated data-folder check showed no projects.
+39. **Release details prepared:** tag `v0.1.0`, title `Breezy Trace 0.1.0`, and release notes from the `[0.1.0] - 2026-11-12` section of `CHANGELOG.md`. The release must not be created until the owner gives a final explicit yes after CI passes.
+40. **Push remains blocked for the assistant:** nothing was pushed, tagged, released, or uploaded. An authorized person must push `release/prepare-first-release-clean` and open the pull request.
 
 ## Saved history
 
@@ -49,8 +58,10 @@ Release branch: `release/prepare-first-release`
 
 ## Next steps
 
-1. Review the release branch and this decision log.
-2. Merge `release/prepare-first-release` into `main`.
-3. Push the repository to GitHub from an authorized environment.
-4. Confirm GitHub CI is green.
-5. Publish version `0.1.0` only after the owner gives a final explicit yes.
+1. Review the new folder and branch `release/prepare-first-release-clean`.
+2. An authorized person pushes the branch and opens a pull request into `main`.
+3. Wait for CI and the dependency security check to pass.
+4. Merge the pull request after review.
+5. The owner gives a final explicit yes or no on publishing.
+6. If yes, create GitHub release `v0.1.0` from `main` using the `CHANGELOG.md` notes.
+7. Confirm the publish workflow succeeds and the package is installable from PyPI.

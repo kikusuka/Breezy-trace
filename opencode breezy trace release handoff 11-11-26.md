@@ -68,6 +68,15 @@ Recreate the release work on top of GitHub `main`:
 - Do not commit `dist/`, `build/`, `.venv/`, or cache files.
 - Do not remove the real local projects from the Breezy Trace database.
 
+## Release details prepared
+
+- Tag: `v0.1.0`
+- Release title: `Breezy Trace 0.1.0`
+- Release notes: the `[0.1.0] - 2026-11-12` section of `CHANGELOG.md`
+- Publish trigger: publishing the GitHub release runs `.github/workflows/publish.yml`
+- Requirement: the release commit must be part of `main`
+- Do not create the release until the owner gives a final explicit yes
+
 ## Owner decisions still needed
 
 - Final approval to publish version `0.1.0` after CI passes.
@@ -95,3 +104,31 @@ The release work has been rebuilt in a new folder on a branch based on the exist
 **Use the new folder and new branch for the push and pull request. The original folder and branch are the backup.**
 
 The rebuild steps described above are already complete on the new branch. Only the remaining steps apply now: push the new branch, open a pull request into `main`, wait for CI, and merge. The original instructions above still describe the safe approach; the branch and folder names in this update replace the old ones.
+
+## Update — 12/11/26: professional release polish
+
+The branch received a final quality pass before the push.
+
+- `9270156` — applied `ruff format` across the codebase and replaced small `try`/`except`/`pass` blocks with `contextlib.suppress`
+- `49a6659` — added release metadata, PyPI install instructions, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`, `MANIFEST.in`, a version-consistency test, and stricter CI checks
+
+Key improvements:
+
+- README now leads with `pip install breezy-trace`, has a structured quick start, keyboard reference, CLI reference, privacy notes, and a clear scope/limitations section.
+- Package metadata now includes maintainer, license files, changelog/documentation links, supported dependency ranges, and a modern scanner compatibility check.
+- The source package includes the release documents, tests, and benchmark script.
+- CI now checks `pip check`, `ruff format --check`, and `ruff check` before tests.
+- The release checklist now requires formatting and changelog checks.
+
+Verification after the polish:
+
+- `ruff format --check .` passed.
+- `ruff check .` passed.
+- Tests: **164 passed, 2 skipped**.
+- Wheel and source package rebuilt.
+- `twine check` passed both files.
+- Clean install passed `pip check` and all three help commands.
+- Isolated data-folder check showed no projects, so the real list was untouched.
+- Nothing was pushed, tagged, or published.
+
+The branch is ready for the authorized person to push and open the pull request. The release tag and notes are prepared but must not be created until the owner gives a final explicit yes after CI passes.
