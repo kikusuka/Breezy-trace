@@ -95,8 +95,8 @@ def test_shell_snippets_cover_every_supported_shell() -> None:
 
 def test_cli_prompt_and_standup_work_without_the_terminal_ui(tmp_path: Path) -> None:
     data = tmp_path / "data"
-    env = {**os.environ, "XDG_DATA_HOME": str(data), "LOCALAPPDATA": str(data), "APPDATA": str(data),
-           "HOME": str(tmp_path)}
+    env = {**os.environ, "BREEZY_TRACE_DATA_DIR": str(data), "XDG_DATA_HOME": str(data),
+           "LOCALAPPDATA": str(data), "APPDATA": str(data), "HOME": str(tmp_path)}
     repo = _repo(tmp_path / "proj")
     src = str(Path(__file__).resolve().parents[1] / "src")
     env["PYTHONPATH"] = src + os.pathsep + env.get("PYTHONPATH", "")

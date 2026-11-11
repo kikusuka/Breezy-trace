@@ -75,8 +75,8 @@ def test_clone_names_and_credential_redaction() -> None:
 
 def test_cli_new_and_clone_register_projects(tmp_path: Path) -> None:
     data = tmp_path / "data"
-    env = {**os.environ, "XDG_DATA_HOME": str(data), "LOCALAPPDATA": str(data), "APPDATA": str(data),
-           "HOME": str(tmp_path)}
+    env = {**os.environ, "BREEZY_TRACE_DATA_DIR": str(data), "XDG_DATA_HOME": str(data),
+           "LOCALAPPDATA": str(data), "APPDATA": str(data), "HOME": str(tmp_path)}
     env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1] / "src") + os.pathsep + env.get("PYTHONPATH", "")
 
     def run(*args: str) -> subprocess.CompletedProcess[str]:

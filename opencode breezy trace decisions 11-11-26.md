@@ -27,7 +27,11 @@ Release branch: `release/prepare-first-release`
 15. **Terminal test:** the owner asked to test the project once. A new terminal window was opened with the installed package on 11/11/26, and the process started successfully. A non-interactive check also ran `breezy-trace --version` and `breezy-trace projects`.
 16. **Publishing:** the owner answered “mostly yes” about publishing. That is not recorded as final approval, and nothing was published. The recommendation is to merge the release branch into main, push it, let CI run, and publish only after a final explicit yes.
 17. **This decision log** was created on 11/11/26. The file name uses hyphens because `/` is not valid in Windows file names.
-18. **Local test data:** the automated tests left sample project entries in the real local Breezy Trace database, visible in `breezy-trace projects`. No cleanup was done. Removing anything needs the owner’s approval, because some entries may be real projects.
+18. **Local test data:** the automated tests left sample project entries in the real local Breezy Trace database, visible in `breezy-trace projects`. No cleanup was done at first, because some entries may be real projects.
+19. **Mock data cleanup approved:** the owner approved removing only test-created entries. Ten entries whose paths were inside pytest temporary folders were removed. The real entries `DELL`, `cyrrus`, and `Breezy-trace` were kept. A backup of the database was made first at `C:\Users\DELL\AppData\Local\Temp\opencode\trace-before-cleanup-20261111-222258.sqlite3`.
+20. **Test isolation fixed:** added support for `BREEZY_TRACE_DATA_DIR` in `config.py`, updated the three subprocess tests to use it, and added a regression test. The full suite then passed with **163 passed, 2 skipped**, and the real project list stayed unchanged.
+21. **Rebuild after the fix:** the wheel and source package were rebuilt; `twine check` passed; a brand-new environment installed the wheel; all three help commands worked; `breezy-trace projects` with the override showed no projects, confirming isolation.
+22. **Publishing:** still on hold. The owner will decide after the release branch is merged, pushed, and CI passes. Nothing was pushed or published.
 
 ## Saved history
 
