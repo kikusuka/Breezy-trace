@@ -168,11 +168,19 @@ CONTEXT_KEYS: dict[str, frozenset[str]] = {
 # Keys that only make sense inside a project. Outside one they explain themselves
 # instead of silently doing nothing.
 PROJECT_KEY_HINTS: dict[str, str] = {
-    "n": "add a note", "t": "add a task", "d": "record a decision", "x": "complete a task",
-    "e": "export a handoff", "w": "open the project on the web", "i": "index its code",
-    "a": "scan its activity", "s": "sync agent sessions", "m": "import its TODOs",
+    "n": "add a note",
+    "t": "add a task",
+    "d": "record a decision",
+    "x": "complete a task",
+    "e": "export a handoff",
+    "w": "open the project on the web",
+    "i": "index its code",
+    "a": "scan its activity",
+    "s": "sync agent sessions",
+    "m": "import its TODOs",
     "N": "write a note in your editor",
-    "v": "open it in your editor, file manager or terminal", "R": "run its tests or build",
+    "v": "open it in your editor, file manager or terminal",
+    "R": "run its tests or build",
 }
 LOBBY_ONLY_ACTIONS = frozenset({"open_project", "remove_project", "new_project", "clone_project"})
 
@@ -182,10 +190,26 @@ HISTORY_DAYS = 84
 LIST_WIDTH = 42
 METRICS_TTL_SECONDS = 120
 MUTED_PREFIXES = (
-    "Run:", "CLI:", "Commands:", "Metadata only", "Capture context", "Local symbol",
-    "Recorded Git", "Remote branch", "Scanning is", "Supported discovery", "Refresh metadata",
-    "Create a portable", "Restore explicitly", "Inspect this", "Other editor",
-    "Claude Code and OpenCode metadata", "Keys:", "Key:", "Press ?", "Theme:",
+    "Run:",
+    "CLI:",
+    "Commands:",
+    "Metadata only",
+    "Capture context",
+    "Local symbol",
+    "Recorded Git",
+    "Remote branch",
+    "Scanning is",
+    "Supported discovery",
+    "Refresh metadata",
+    "Create a portable",
+    "Restore explicitly",
+    "Inspect this",
+    "Other editor",
+    "Claude Code and OpenCode metadata",
+    "Keys:",
+    "Key:",
+    "Press ?",
+    "Theme:",
 )
 
 
@@ -281,7 +305,9 @@ class ProjectPicker(ModalScreen[Path | None]):
                 "Tip: drag a folder from Explorer into the box below, or paste its path.",
                 id="picker-hint",
             )
-            yield Input(value=str(Path.home()), placeholder="Enter any folder path", id="folder-path")
+            yield Input(
+                value=str(Path.home()), placeholder="Enter any folder path", id="folder-path"
+            )
             yield DirectoryTree(str(Path.home()), id="directory-tree")
             with Horizontal(id="picker-actions"):
                 yield Button("Open path", id="open-path", variant="primary")
@@ -356,10 +382,7 @@ class TraceApp(App[None]):
         Binding("5", "goto('activity')", "Activity", show=False),
         Binding("6", "goto('code')", "Code", show=False),
         Binding("7", "goto('settings')", "Settings", show=False),
-        *[
-            Binding(key, f"need_project('{key}')", show=False)
-            for key in PROJECT_KEY_HINTS
-        ],
+        *[Binding(key, f"need_project('{key}')", show=False) for key in PROJECT_KEY_HINTS],
     ]
 
     def __init__(
@@ -506,9 +529,7 @@ class TraceApp(App[None]):
             except Exception:  # noqa: BLE001
                 status = GitStatus.unavailable("Status unavailable.")
             try:
-                daily = bucket_days(
-                    commit_activity(path, HISTORY_DAYS), HISTORY_DAYS, date.today()
-                )
+                daily = bucket_days(commit_activity(path, HISTORY_DAYS), HISTORY_DAYS, date.today())
             except Exception:  # noqa: BLE001
                 daily = [0] * HISTORY_DAYS
             try:
@@ -554,9 +575,7 @@ class TraceApp(App[None]):
         ids = self._boot_ids
         loaded = [item for item in ids if item in self._states]
         attention = sum(needs_attention(self._states[item]) for item in loaded)
-        colors = [
-            state_color(self._states[item]) if item in self._states else None for item in ids
-        ]
+        colors = [state_color(self._states[item]) if item in self._states else None for item in ids]
         return len(ids), len(loaded), attention, colors
 
     # ------------------------------------------------------------------ chrome
@@ -724,7 +743,9 @@ class TraceApp(App[None]):
             base = action[:-4]
             if base in ("backup_data", "standup"):
                 return self.current_view not in CONTEXT_KEYS[base]
-            return self.current_view in PROJECT_VIEWS and self.current_view not in CONTEXT_KEYS[base]
+            return (
+                self.current_view in PROJECT_VIEWS and self.current_view not in CONTEXT_KEYS[base]
+            )
         return True
 
     def action_goto(self, view: str) -> None:
@@ -784,8 +805,10 @@ class TraceApp(App[None]):
         self.push_screen(
             FormScreen(
                 "NEW NOTE",
-                [("title", "Title", "What happened, or what comes next?"),
-                 ("body", "Details (optional)", "")],
+                [
+                    ("title", "Title", "What happened, or what comes next?"),
+                    ("body", "Details (optional)", ""),
+                ],
                 hint="Saved to this project's journal. Nothing is inferred.",
             ),
             lambda values: self._save_note(project, values),
@@ -824,9 +847,11 @@ class TraceApp(App[None]):
         self.push_screen(
             FormScreen(
                 "RECORD A DECISION",
-                [("title", "Topic", "What was decided about?"),
-                 ("decision", "Decision", "What did you decide?"),
-                 ("context", "Why (optional)", "")],
+                [
+                    ("title", "Topic", "What was decided about?"),
+                    ("decision", "Decision", "What did you decide?"),
+                    ("context", "Why (optional)", ""),
+                ],
                 hint="Decisions are shown on Resume so you remember the reasoning later.",
                 required=("title", "decision"),
             ),
@@ -852,13 +877,17 @@ class TraceApp(App[None]):
             self.notify("This project has no open tasks.")
             return
         self.push_screen(
-            ChoiceScreen("COMPLETE A TASK", [(row["id"], _clean(row["title"])) for row in open_tasks]),
+            ChoiceScreen(
+                "COMPLETE A TASK", [(row["id"], _clean(row["title"])) for row in open_tasks]
+            ),
             lambda task_id: self._complete_task(project, task_id),
         )
 
     def _complete_task(self, project: Project, task_id: str | None) -> None:
         if task_id:
-            self._journal_call("Task completed.", lambda store: store.complete_task(project, task_id))
+            self._journal_call(
+                "Task completed.", lambda store: store.complete_task(project, task_id)
+            )
 
     def _start_job(self, label: str, work) -> None:
         self.notify(f"{label}…", title="Working")
@@ -892,7 +921,9 @@ class TraceApp(App[None]):
     def action_index_code(self) -> None:
         project = self._project_for_action()
         if project is not None:
-            self._start_job("Indexing code", lambda: actions.index_code(self.registry.db_path, project))
+            self._start_job(
+                "Indexing code", lambda: actions.index_code(self.registry.db_path, project)
+            )
 
     def action_scan_activity(self) -> None:
         project = self._project_for_action()
@@ -921,8 +952,14 @@ class TraceApp(App[None]):
         if project is not None:
             self._start_job(
                 "Writing handoff",
-                lambda: "Handoff written: "
-                + str(actions.export_handoff(self.registry.db_path, project, data_dir() / "handoffs")),
+                lambda: (
+                    "Handoff written: "
+                    + str(
+                        actions.export_handoff(
+                            self.registry.db_path, project, data_dir() / "handoffs"
+                        )
+                    )
+                ),
             )
 
     def action_import_todos(self) -> None:
@@ -994,8 +1031,10 @@ class TraceApp(App[None]):
         self.push_screen(
             FormScreen(
                 "NEW PROJECT",
-                [("name", "Project name", "my-new-tool"),
-                 ("parent", "Create it inside this folder", "")],
+                [
+                    ("name", "Project name", "my-new-tool"),
+                    ("parent", "Create it inside this folder", ""),
+                ],
                 hint="Makes a folder with an empty Git repository and adds it to Trace.",
                 required=("name", "parent"),
                 defaults={"parent": str(Path.cwd())},
@@ -1022,8 +1061,14 @@ class TraceApp(App[None]):
         self.push_screen(
             FormScreen(
                 "CLONE A REPOSITORY",
-                [("url", "Repository URL", "https://github.com/owner/repo.git  or  git@gitlab.com:group/repo.git"),
-                 ("parent", "Clone it inside this folder", "")],
+                [
+                    (
+                        "url",
+                        "Repository URL",
+                        "https://github.com/owner/repo.git  or  git@gitlab.com:group/repo.git",
+                    ),
+                    ("parent", "Clone it inside this folder", ""),
+                ],
                 hint="Runs git clone, which uses the network because you asked. Credentials stay with Git.",
                 required=("url", "parent"),
                 defaults={"parent": str(Path.cwd())},
@@ -1071,7 +1116,9 @@ class TraceApp(App[None]):
             self.notify("Highlight a project in the list first.", title="Nothing to remove")
             return
         counts = JournalStore(self.registry.db_path).project_counts(project)
-        recorded = counts["notes"] + counts["open_tasks"] + counts["done_tasks"] + counts["decisions"]
+        recorded = (
+            counts["notes"] + counts["open_tasks"] + counts["done_tasks"] + counts["decisions"]
+        )
         lines = [
             f"{project.name}",
             f"{project.path}",
@@ -1097,10 +1144,8 @@ class TraceApp(App[None]):
             return
         if not self.registry.unregister(project.path):
             self.notify("That project was already gone.", severity="warning")
-        try:
+        with suppress(RowDoesNotExist):
             self._main.query_one("#project-table", DataTable).remove_row(project.id)
-        except RowDoesNotExist:
-            pass
         self._states.pop(project.id, None)
         self._history.pop(project.id, None)
         self._metrics.pop(project.id, None)
@@ -1119,8 +1164,10 @@ class TraceApp(App[None]):
             return
         remote = primary_remote(list_remotes(Path(project.path)))
         if remote is None:
-            self.notify("This project has no Git remote, so it only exists on this machine.",
-                        title="Local only")
+            self.notify(
+                "This project has no Git remote, so it only exists on this machine.",
+                title="Local only",
+            )
             return
         webbrowser.open(remote.web_url)
         self.notify(f"{remote.host}/{remote.slug}", title="Opened in your browser")
@@ -1176,7 +1223,10 @@ class TraceApp(App[None]):
         self.push_screen(
             ChoiceScreen(
                 f"RUN IN {project.name.upper()}",
-                [(str(index), f"{item.label:<20} {item.source}") for index, item in enumerate(commands)],
+                [
+                    (str(index), f"{item.label:<20} {item.source}")
+                    for index, item in enumerate(commands)
+                ],
             ),
             lambda choice: self._run_chosen(project, commands, choice),
         )
@@ -1188,7 +1238,9 @@ class TraceApp(App[None]):
         argv = resolve_executable(command)
         if argv is None:
             self.notify(
-                f"{command.args[0]} was not found on your PATH.", title="Cannot run", severity="error"
+                f"{command.args[0]} was not found on your PATH.",
+                title="Cannot run",
+                severity="error",
             )
             return
         started = time.monotonic()
@@ -1198,7 +1250,9 @@ class TraceApp(App[None]):
                 print(f"\n$ {command.display}\n  in {project.path}\n")
                 code = subprocess.run(argv, cwd=project.path, check=False).returncode
                 seconds = time.monotonic() - started
-                print(f"\n{'Passed' if code == 0 else 'Failed'}: exit code {code} after {seconds:.1f}s")
+                print(
+                    f"\n{'Passed' if code == 0 else 'Failed'}: exit code {code} after {seconds:.1f}s"
+                )
                 input("Press Enter to return to Breezy Trace... ")
         except Exception as error:  # noqa: BLE001  suspending is not supported everywhere
             self.notify(str(error), title="Could not run the command", severity="error")
@@ -1262,7 +1316,10 @@ class TraceApp(App[None]):
             for title in item.next_up:
                 out.append(f"{'next':<9}", style=f"bold {PALETTE['dirty']}")
                 out.append(f"{_clean(title)[:80]}\n")
-        out.append("\nbreezy-trace standup  prints this as Markdown (add --days N)\n", style=PALETTE["faint"])
+        out.append(
+            "\nbreezy-trace standup  prints this as Markdown (add --days N)\n",
+            style=PALETTE["faint"],
+        )
         return out
 
     # ------------------------------------------------------------------ search
@@ -1296,7 +1353,9 @@ class TraceApp(App[None]):
         out.append(f"{len(rows)} result{'s' if len(rows) != 1 else ''} for ", style="bold")
         out.append(f'"{_clean(query)}"\n', style=f"bold {PALETTE['primary']}")
         if not rows:
-            out.append("\nNo matches in any project's notes, tasks or decisions.\n", style=PALETTE["muted"])
+            out.append(
+                "\nNo matches in any project's notes, tasks or decisions.\n", style=PALETTE["muted"]
+            )
         for row in rows:
             kind = row["kind"]
             if kind == "task":
@@ -1348,8 +1407,11 @@ class TraceApp(App[None]):
             out.append("No commits to draw.\n", style=PALETTE["muted"])
             return
         lanes = (
-            PALETTE["primary"], PALETTE["decision"], PALETTE["clean"],
-            PALETTE["dirty"], PALETTE["danger"],
+            PALETTE["primary"],
+            PALETTE["decision"],
+            PALETTE["clean"],
+            PALETTE["dirty"],
+            PALETTE["danger"],
         )
         for line in lines:
             graph, sha, refs, subject = parse_graph_line(line)
@@ -1401,7 +1463,9 @@ class TraceApp(App[None]):
             return
         cycles = graph.cycles()
         _heading(out, "Dependency map", "Python modules importing each other")
-        out.append(f"{len(graph.nodes)} modules · {graph.edge_count} links · ", style=PALETTE["muted"])
+        out.append(
+            f"{len(graph.nodes)} modules · {graph.edge_count} links · ", style=PALETTE["muted"]
+        )
         out.append(
             f"{len(cycles)} import cycle{'s' if len(cycles) != 1 else ''}\n",
             style=PALETTE["danger"] if cycles else PALETTE["clean"],
@@ -1599,8 +1663,10 @@ class TraceApp(App[None]):
             out.append(f"{overall.commits_7d}", style=f"bold {PALETTE['text']}")
             if overall.trend is not None:
                 arrow, color = (
-                    ("↑", PALETTE["clean"]) if overall.trend > 0
-                    else ("↓", PALETTE["dirty"]) if overall.trend < 0
+                    ("↑", PALETTE["clean"])
+                    if overall.trend > 0
+                    else ("↓", PALETTE["dirty"])
+                    if overall.trend < 0
                     else ("→", PALETTE["muted"])
                 )
                 out.append(f"  {arrow} {abs(overall.trend) * 100:.0f}% vs previous 7d", style=color)
@@ -1608,8 +1674,16 @@ class TraceApp(App[None]):
             _kv(out, "Commits 30d", f"{overall.commits_30d}")
             out.append(f"{'30 days':<14}", style=PALETTE["muted"])
             out.append(sparkline(overall.daily_total[-30:]) + "\n", style=PALETTE["primary"])
-            _kv(out, "Active", f"{overall.active_projects} of {overall.tracked_projects} projects this week")
-            _kv(out, "Streak", f"{overall.streak} day{'s' if overall.streak != 1 else ''} (any project)")
+            _kv(
+                out,
+                "Active",
+                f"{overall.active_projects} of {overall.tracked_projects} projects this week",
+            )
+            _kv(
+                out,
+                "Streak",
+                f"{overall.streak} day{'s' if overall.streak != 1 else ''} (any project)",
+            )
             if overall.best_weekday is not None:
                 _kv(out, "Busiest day", WEEKDAY_NAMES[overall.best_weekday])
             if overall.stalest is not None and overall.stalest[1] >= 7:
@@ -1621,7 +1695,11 @@ class TraceApp(App[None]):
                 behind = sum(s.behind > 0 for _p, s in loaded)
                 unpushed = sum(s.ahead > 0 for _p, s in loaded)
                 clean = sum(not needs_attention(s) and not is_unavailable(s) for _p, s in loaded)
-                _kv(out, "Git state", f"{dirty} dirty · {unpushed} unpushed · {behind} behind · {clean} clean")
+                _kv(
+                    out,
+                    "Git state",
+                    f"{dirty} dirty · {unpushed} unpushed · {behind} behind · {clean} clean",
+                )
             totals = store.totals()
             _kv(
                 out,
@@ -1713,22 +1791,32 @@ class TraceApp(App[None]):
                 style=PALETTE["muted"],
             )
             if not details.get("available", True):
-                out.append("Git details unavailable (command failed or timed out)\n",
-                           style=PALETTE["muted"])
+                out.append(
+                    "Git details unavailable (command failed or timed out)\n",
+                    style=PALETTE["muted"],
+                )
             else:
                 if details["conflicts"]:
-                    out.append(f"{details['conflicts']} merge conflicts\n",
-                               style=f"bold {PALETTE['danger']}")
+                    out.append(
+                        f"{details['conflicts']} merge conflicts\n",
+                        style=f"bold {PALETTE['danger']}",
+                    )
                 if details["stashes"]:
                     out.append(f"{details['stashes']} stashes\n", style=PALETTE["muted"])
         if not is_unavailable(status):
             total_changed, changes = changed_files(path, limit=8)
             letter_colors = {
-                "A": PALETTE["clean"], "M": PALETTE["dirty"], "D": PALETTE["danger"],
-                "R": PALETTE["primary"], "U": PALETTE["danger"], "?": PALETTE["faint"],
+                "A": PALETTE["clean"],
+                "M": PALETTE["dirty"],
+                "D": PALETTE["danger"],
+                "R": PALETTE["primary"],
+                "U": PALETTE["danger"],
+                "?": PALETTE["faint"],
             }
             for letter, name in changes:
-                out.append(f"{letter}  ", style=f"bold {letter_colors.get(letter, PALETTE['text'])}")
+                out.append(
+                    f"{letter}  ", style=f"bold {letter_colors.get(letter, PALETTE['text'])}"
+                )
                 shown = name if len(name) <= 46 else "…" + name[-45:]
                 out.append(f"{_clean(shown)}\n")
             if total_changed > len(changes):
@@ -1751,8 +1839,10 @@ class TraceApp(App[None]):
             body = _clean(note["body"]).strip()
             if body:
                 snippet = " ".join(body.split())
-                out.append((snippet[:200] + "…" if len(snippet) > 200 else snippet) + "\n",
-                           style=PALETTE["muted"])
+                out.append(
+                    (snippet[:200] + "…" if len(snippet) > 200 else snippet) + "\n",
+                    style=PALETTE["muted"],
+                )
         else:
             out.append("None yet · press n to write one\n", style=PALETTE["muted"])
 
@@ -1861,7 +1951,11 @@ class TraceApp(App[None]):
         left = Text()
         _heading(left, "Overview")
         if m.first_commit is not None:
-            _kv(left, "Age", f"{describe_age(m.first_commit, today)}  (since {m.first_commit.isoformat()})")
+            _kv(
+                left,
+                "Age",
+                f"{describe_age(m.first_commit, today)}  (since {m.first_commit.isoformat()})",
+            )
         _kv(left, "Commits", f"{m.total_commits:,} total")
         if m.last_commit is not None:
             _kv(left, "Last commit", relative_days((today - m.last_commit.date()).days))
@@ -1874,7 +1968,11 @@ class TraceApp(App[None]):
         _kv(left, "30 days", f"{m.commits_30d} commits")
         _kv(left, "84 days", f"{m.commits_84d} commits")
         _kv(left, "Active days", f"{m.active_days_30} of the last 30")
-        _kv(left, "Streak", f"{m.streak_current} day{'s' if m.streak_current != 1 else ''} now · best {m.streak_longest}")
+        _kv(
+            left,
+            "Streak",
+            f"{m.streak_current} day{'s' if m.streak_current != 1 else ''} now · best {m.streak_longest}",
+        )
         if m.active_days_30:
             _kv(left, "Pace", f"{m.commits_30d / m.active_days_30:.1f} commits per active day")
         left.append(f"{'12 weeks':<14}", style=PALETTE["muted"])
@@ -1882,7 +1980,13 @@ class TraceApp(App[None]):
         recent4, before4 = sum(m.weekly[-4:]), sum(m.weekly[-8:-4])
         if before4:
             change = (recent4 - before4) / before4 * 100
-            arrow, color = ("↑", PALETTE["clean"]) if change > 0 else ("↓", PALETTE["dirty"]) if change < 0 else ("→", PALETTE["muted"])
+            arrow, color = (
+                ("↑", PALETTE["clean"])
+                if change > 0
+                else ("↓", PALETTE["dirty"])
+                if change < 0
+                else ("→", PALETTE["muted"])
+            )
             left.append(f"  {arrow} {abs(change):.0f}% vs prior 4 weeks", style=color)
         left.append("\n")
 
@@ -1892,7 +1996,11 @@ class TraceApp(App[None]):
         _kv(left, "Net", f"{m.lines_added - m.lines_deleted:+,} lines")
         _kv(left, "Files touched", f"{m.files_touched:,}")
         if m.commits_30d:
-            _kv(left, "Per commit", f"{(m.lines_added + m.lines_deleted) / m.commits_30d:.0f} lines changed")
+            _kv(
+                left,
+                "Per commit",
+                f"{(m.lines_added + m.lines_deleted) / m.commits_30d:.0f} lines changed",
+            )
 
         right = Text()
         _heading(right, "Rhythm", "when commits happen")
@@ -1905,7 +2013,7 @@ class TraceApp(App[None]):
         right.append(sparkline(m.hours) + "\n", style=PALETTE["primary"])
         labels = [" "] * 24
         for hour in (0, 6, 12, 18):
-            labels[hour:hour + 2] = list(f"{hour:02d}")
+            labels[hour : hour + 2] = list(f"{hour:02d}")
         right.append("       " + "".join(labels) + "\n", style=PALETTE["faint"])
         if any(m.hours):
             busiest = max(range(24), key=m.hours.__getitem__)
@@ -1959,11 +2067,16 @@ class TraceApp(App[None]):
                 right.append(f"{shown}:{line}  ", style=PALETTE["primary"])
                 right.append(f"{_clean(text)[:48]}\n", style=PALETTE["text"])
             if m.todo_total > len(m.todos):
-                right.append(f"+{m.todo_total - len(m.todos)} more (git grep -n TODO)\n", style=PALETTE["muted"])
+                right.append(
+                    f"+{m.todo_total - len(m.todos)} more (git grep -n TODO)\n",
+                    style=PALETTE["muted"],
+                )
         else:
             right.append("None found.\n", style=PALETTE["muted"])
         if m.todo_total:
-            right.append("\nPress m to turn these into tasks (never duplicates).\n", style=PALETTE["faint"])
+            right.append(
+                "\nPress m to turn these into tasks (never duplicates).\n", style=PALETTE["faint"]
+            )
 
         left.rstrip()
         right.rstrip()
@@ -1983,7 +2096,7 @@ class TraceApp(App[None]):
         ]
         lines.extend(f"• {row['title']}  [{row['created_at'][:10]}]" for row in notes)
         if not notes:
-            lines.append("No notes recorded. Try: breezy-trace note \"Next session\" --body \"...\"")
+            lines.append('No notes recorded. Try: breezy-trace note "Next session" --body "..."')
         lines.extend(["", f"OPEN TASKS ({sum(row['status'] == 'open' for row in tasks)})"])
         lines.extend(f"○ {row['title']}" for row in tasks if row["status"] == "open")
         if not any(row["status"] == "open" for row in tasks):
@@ -1992,12 +2105,14 @@ class TraceApp(App[None]):
         lines.extend(f"• {row['title']}: {row['decision']}" for row in decisions)
         if not decisions:
             lines.append("No decisions recorded.")
-        lines.extend([
-            "",
-            "Keys: n new note · N write a note in your editor · t new task · d record decision · x complete a task",
-            "CLI: note TITLE · task TITLE · tasks [--all] · done TASK_ID",
-            "CLI: decision TITLE DECISION · journal · resume",
-        ])
+        lines.extend(
+            [
+                "",
+                "Keys: n new note · N write a note in your editor · t new task · d record decision · x complete a task",
+                "CLI: note TITLE · task TITLE · tasks [--all] · done TASK_ID",
+                "CLI: decision TITLE DECISION · journal · resume",
+            ]
+        )
         return "\n".join(lines)
 
     def _agents(self, project: Project) -> str:
@@ -2042,7 +2157,9 @@ class TraceApp(App[None]):
         lines.extend(["", f"UNPUSHED COMMITS ({len(data['unpushed_commits'])})"])
         lines.extend(f"• {item['sha']}  {item['subject']}" for item in data["unpushed_commits"])
         lines.extend(["", f"UPSTREAM-ONLY COMMITS ({len(data['upstream_only_commits'])})"])
-        lines.extend(f"• {item['sha']}  {item['subject']}" for item in data["upstream_only_commits"])
+        lines.extend(
+            f"• {item['sha']}  {item['subject']}" for item in data["upstream_only_commits"]
+        )
         lines.extend(["", f"STASHES ({len(data['stashes'])})"])
         lines.extend(f"• {item['ref']}  {item['subject']}" for item in data["stashes"])
         text = _colorize("\n".join(lines))
@@ -2063,11 +2180,13 @@ class TraceApp(App[None]):
             lines.append(f"  Evidence: {item['evidence']}")
         if not events:
             lines.extend(["No activity snapshots recorded.", "Run: breezy-trace activity scan"])
-        lines.extend([
-            "",
-            "Keys: a scan the working tree now · s sync agent sessions",
-            "Scanning is explicit; no background watcher is running.",
-        ])
+        lines.extend(
+            [
+                "",
+                "Keys: a scan the working tree now · s sync agent sessions",
+                "Scanning is explicit; no background watcher is running.",
+            ]
+        )
         return "\n".join(lines)
 
     def _activity_view(self, project: Project) -> str:
@@ -2110,17 +2229,19 @@ class TraceApp(App[None]):
             lines.append("No imports indexed.")
         lines.extend(["", "PARSER SUPPORT"])
         lines.extend(f"• {language}" for language in ["python", *sorted(LANGUAGE_EXTENSIONS)])
-        lines.extend([
-            "",
-            "Key: i  index symbols and imports now",
-            "",
-            "COMMANDS",
-            "breezy-trace code index",
-            "breezy-trace code languages",
-            "breezy-trace code search QUERY",
-            "breezy-trace code imports [QUERY]",
-            "breezy-trace code calls [QUERY]",
-        ])
+        lines.extend(
+            [
+                "",
+                "Key: i  index symbols and imports now",
+                "",
+                "COMMANDS",
+                "breezy-trace code index",
+                "breezy-trace code languages",
+                "breezy-trace code search QUERY",
+                "breezy-trace code imports [QUERY]",
+                "breezy-trace code calls [QUERY]",
+            ]
+        )
         text = _colorize("\n".join(lines))
         text.append("\n")
         self._append_code_stats(text, project)
@@ -2128,26 +2249,28 @@ class TraceApp(App[None]):
         return text
 
     def _settings(self, project: Project) -> str:
-        return "\n".join([
-            "PROJECT SETTINGS",
-            "",
-            f"Active project: {project.name}",
-            f"Project path: {project.path}",
-            f"Database: {database_path()}",
-            "",
-            "APPEARANCE",
-            f"Theme: {theme_label(current_theme())}  (press T or F2 to switch)",
-            "",
-            "BACKUP & RESTORE",
-            "Key: b  back up the database now",
-            "Create a portable backup: breezy-trace backup",
-            "Restore explicitly: breezy-trace restore FILE --yes",
-            "Inspect this project: breezy-trace status · inspect · branches · resume",
-            "",
-            "INTEGRATIONS",
-            "Claude Code and OpenCode metadata discovery are available.",
-            "Other editor integrations are not yet implemented.",
-            "",
-            "HELP",
-            "Press ? or F1 anywhere for every key and every manual feature.",
-        ])
+        return "\n".join(
+            [
+                "PROJECT SETTINGS",
+                "",
+                f"Active project: {project.name}",
+                f"Project path: {project.path}",
+                f"Database: {database_path()}",
+                "",
+                "APPEARANCE",
+                f"Theme: {theme_label(current_theme())}  (press T or F2 to switch)",
+                "",
+                "BACKUP & RESTORE",
+                "Key: b  back up the database now",
+                "Create a portable backup: breezy-trace backup",
+                "Restore explicitly: breezy-trace restore FILE --yes",
+                "Inspect this project: breezy-trace status · inspect · branches · resume",
+                "",
+                "INTEGRATIONS",
+                "Claude Code and OpenCode metadata discovery are available.",
+                "Other editor integrations are not yet implemented.",
+                "",
+                "HELP",
+                "Press ? or F1 anywhere for every key and every manual feature.",
+            ]
+        )

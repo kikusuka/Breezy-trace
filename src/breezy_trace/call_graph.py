@@ -3,6 +3,7 @@
 Reports syntactic call expressions, not resolved call graph edges. Dynamic
 dispatch, aliases, monkey-patching, and runtime imports make target claims unsafe.
 """
+
 from __future__ import annotations
 
 import ast
@@ -47,12 +48,14 @@ class _CallVisitor(ast.NodeVisitor):
         self.scope.pop()
 
     def visit_Call(self, node: ast.Call) -> None:
-        self.records.append({
-            "caller": ".".join(self.scope) or "<module>",
-            "callee": _callee_name(node.func),
-            "line": node.lineno,
-            "resolution": "unresolved-syntax",
-        })
+        self.records.append(
+            {
+                "caller": ".".join(self.scope) or "<module>",
+                "callee": _callee_name(node.func),
+                "line": node.lineno,
+                "resolution": "unresolved-syntax",
+            }
+        )
         self.generic_visit(node)
 
 

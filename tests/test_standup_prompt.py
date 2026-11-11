@@ -12,9 +12,16 @@ ME = "me@example.com"
 
 
 def _git(repo: Path, *args: str, author: str = ME) -> None:
-    env = {**os.environ, "GIT_AUTHOR_NAME": "Someone", "GIT_AUTHOR_EMAIL": author,
-           "GIT_COMMITTER_NAME": "Someone", "GIT_COMMITTER_EMAIL": author}
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True, env=env)
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "Someone",
+        "GIT_AUTHOR_EMAIL": author,
+        "GIT_COMMITTER_NAME": "Someone",
+        "GIT_COMMITTER_EMAIL": author,
+    }
+    subprocess.run(
+        ["git", "-C", str(repo), *args], check=True, capture_output=True, text=True, env=env
+    )
 
 
 def _repo(path: Path) -> Path:
@@ -50,12 +57,24 @@ def test_standup_collects_my_work_and_formats_markdown(tmp_path: Path) -> None:
     assert entry.notes == ["Parked the picker"] and entry.decisions == [("Storage", "SQLite")]
 
     everyone = standup.collect_standup(db, registry.list_projects(), since, mine_only=False)
-    assert {subject for _s, _d, subject in everyone[0].commits} == {"my first commit", "teammate commit"}
+    assert {subject for _s, _d, subject in everyone[0].commits} == {
+        "my first commit",
+        "teammate commit",
+    }
 
     text = standup.format_standup(report, 1)
-    for expected in ("# Standup: last 24 hours", "## proj", "**Done**", "my first commit",
-                     "- [x] Wire dialog", "**Decided**", "- Storage: SQLite", "**Notes**",
-                     "**Next**", "- [ ] Write docs"):
+    for expected in (
+        "# Standup: last 24 hours",
+        "## proj",
+        "**Done**",
+        "my first commit",
+        "- [x] Wire dialog",
+        "**Decided**",
+        "- Storage: SQLite",
+        "**Notes**",
+        "**Next**",
+        "- [ ] Write docs",
+    ):
         assert expected in text
     assert "teammate commit" not in text
 
@@ -95,15 +114,28 @@ def test_shell_snippets_cover_every_supported_shell() -> None:
 
 def test_cli_prompt_and_standup_work_without_the_terminal_ui(tmp_path: Path) -> None:
     data = tmp_path / "data"
-    env = {**os.environ, "XDG_DATA_HOME": str(data), "LOCALAPPDATA": str(data), "APPDATA": str(data),
-           "HOME": str(tmp_path)}
+    env = {
+        **os.environ,
+        "BREEZY_TRACE_DATA_DIR": str(data),
+        "XDG_DATA_HOME": str(data),
+        "LOCALAPPDATA": str(data),
+        "APPDATA": str(data),
+        "HOME": str(tmp_path),
+    }
     repo = _repo(tmp_path / "proj")
     src = str(Path(__file__).resolve().parents[1] / "src")
     env["PYTHONPATH"] = src + os.pathsep + env.get("PYTHONPATH", "")
 
     def run(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
-        return subprocess.run([sys.executable, "-m", "breezy_trace", *args], check=False, cwd=cwd, env=env,
-                              capture_output=True, text=True, timeout=60)
+        return subprocess.run(
+            [sys.executable, "-m", "breezy_trace", *args],
+            check=False,
+            cwd=cwd,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
 
     outside = run("prompt", cwd=tmp_path)
     assert outside.returncode == 0 and outside.stdout.strip() == ""

@@ -29,9 +29,7 @@ def prompt_segment(
         return " ".join(part for part in (project.name, tasks) if part)
 
     status = inspect_status(Path(project.path))
-    changes, up, down, ok = (
-        ("*", "^", "v", "ok") if ascii_only else ("±", "↑", "↓", "✓")
-    )
+    changes, up, down, ok = ("*", "^", "v", "ok") if ascii_only else ("±", "↑", "↓", "✓")
     state: list[str] = []
     if is_unavailable(status):
         state.append("?")
@@ -64,10 +62,12 @@ function prompt {
     if ($segment) { "[$segment] $base" } else { $base }
 }
 """,
-    "bash": _POSIX_FUNCTION + """# Add to ~/.bashrc
+    "bash": _POSIX_FUNCTION
+    + """# Add to ~/.bashrc
 PS1='$(__breezy_prompt)'"$PS1"
 """,
-    "zsh": _POSIX_FUNCTION + """# Add to ~/.zshrc
+    "zsh": _POSIX_FUNCTION
+    + """# Add to ~/.zshrc
 setopt PROMPT_SUBST
 PROMPT='$(__breezy_prompt)'"$PROMPT"
 """,

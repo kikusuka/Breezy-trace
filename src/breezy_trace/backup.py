@@ -76,10 +76,7 @@ def restore_database(backup: Path, destination: Path) -> Path:
             raise ValueError(f"Unsupported backup schema version: {version}")
         required = {"projects", "journal_entries", "project_tasks", "project_decisions"}
         actual = {
-            row[0]
-            for row in source.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
+            row[0] for row in source.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
         if not required.issubset(actual):
             raise ValueError("File is not a complete Breezy Trace database.")

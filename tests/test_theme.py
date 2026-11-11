@@ -4,8 +4,14 @@ from breezy_trace.models import GitStatus
 
 def _status(**overrides) -> GitStatus:
     values = {
-        "branch": "main", "staged": 0, "modified": 0, "untracked": 0,
-        "ahead": 0, "behind": 0, "clean": True, "summary": "",
+        "branch": "main",
+        "staged": 0,
+        "modified": 0,
+        "untracked": 0,
+        "ahead": 0,
+        "behind": 0,
+        "clean": True,
+        "summary": "",
     }
     values.update(overrides)
     return GitStatus(**values)

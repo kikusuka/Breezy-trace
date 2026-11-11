@@ -30,22 +30,22 @@ class FakeWinreg:
         self.values: dict[tuple[str, str], str] = {}
         self.keys: set[str] = set()
 
-    def CreateKey(self, root, path):  # noqa: N802
+    def CreateKey(self, root, path):
         self.keys.add(path)
         return FakeKey(self, path)
 
-    def SetValueEx(self, key, name, _reserved, _kind, value):  # noqa: N802
+    def SetValueEx(self, key, name, _reserved, _kind, value):
         self.values[(key.path, name)] = value
 
-    def OpenKey(self, root, path):  # noqa: N802
+    def OpenKey(self, root, path):
         if path not in self.keys:
             raise FileNotFoundError(path)
         return FakeKey(self, path)
 
-    def QueryValueEx(self, key, name):  # noqa: N802
+    def QueryValueEx(self, key, name):
         return (self.values[(key.path, name)], 1)
 
-    def DeleteKey(self, root, path):  # noqa: N802
+    def DeleteKey(self, root, path):
         if path not in self.keys:
             raise FileNotFoundError(path)
         self.keys.discard(path)
@@ -66,11 +66,15 @@ def test_explorer_menu_install_status_and_uninstall() -> None:
 
 def test_editor_detection_prefers_the_environment_then_known_editors() -> None:
     assert launchers.editor_command(which=lambda name: None, environ={}) is None
-    found = launchers.editor_command(which=lambda name: f"/bin/{name}" if name == "cursor" else None, environ={})
+    found = launchers.editor_command(
+        which=lambda name: f"/bin/{name}" if name == "cursor" else None, environ={}
+    )
     assert found == ["/bin/cursor"]
     both = launchers.editor_command(which=lambda name: f"/bin/{name}", environ={})
     assert both == ["/bin/code"]  # VS Code first
-    custom = launchers.editor_command(which=lambda name: "/bin/code", environ={"BREEZY_TRACE_EDITOR": "myedit --wait"})
+    custom = launchers.editor_command(
+        which=lambda name: "/bin/code", environ={"BREEZY_TRACE_EDITOR": "myedit --wait"}
+    )
     assert custom == ["myedit", "--wait"]
 
 
@@ -80,14 +84,24 @@ def test_file_manager_and_terminal_commands_per_platform() -> None:
     assert launchers.file_manager_command(folder, "darwin") == ["open", "proj"]
     assert launchers.file_manager_command(folder, "linux") == ["xdg-open", "proj"]
     assert launchers.file_manager_name("win32") == "File Explorer"
-    assert launchers.terminal_command(folder, "win32", which=lambda n: "wt.exe" if n == "wt" else None) == ["wt", "-d", "proj"]
-    assert launchers.terminal_command(folder, "win32", which=lambda n: None)[:3] == ["cmd.exe", "/c", "start"]
+    assert launchers.terminal_command(
+        folder, "win32", which=lambda n: "wt.exe" if n == "wt" else None
+    ) == ["wt", "-d", "proj"]
+    assert launchers.terminal_command(folder, "win32", which=lambda n: None)[:3] == [
+        "cmd.exe",
+        "/c",
+        "start",
+    ]
     assert launchers.terminal_command(folder, "linux", which=lambda n: None) is None
 
 
-def test_open_target_starts_the_right_program_and_reports_missing_ones(tmp_path: Path, monkeypatch) -> None:
+def test_open_target_starts_the_right_program_and_reports_missing_ones(
+    tmp_path: Path, monkeypatch
+) -> None:
     started: list[tuple[list[str], Path | None]] = []
-    monkeypatch.setattr(launchers, "_spawn", lambda command, cwd=None: started.append((command, cwd)))
+    monkeypatch.setattr(
+        launchers, "_spawn", lambda command, cwd=None: started.append((command, cwd))
+    )
     monkeypatch.setattr(launchers, "editor_command", lambda *a, **k: ["/bin/code"])
     assert launchers.open_target("editor", tmp_path) == "Opened in code"
     assert started[-1] == (["/bin/code", str(tmp_path)], None)
@@ -116,7 +130,9 @@ def test_command_detection_reads_project_files(tmp_path: Path) -> None:
     (tmp_path / "yarn.lock").write_text("", encoding="utf-8")
     (tmp_path / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
     (tmp_path / "go.mod").write_text("module x\n", encoding="utf-8")
-    (tmp_path / "Makefile").write_text("test:\n\tpytest\nbuild: deps\n\techo\nVAR := 1\n", encoding="utf-8")
+    (tmp_path / "Makefile").write_text(
+        "test:\n\tpytest\nbuild: deps\n\techo\nVAR := 1\n", encoding="utf-8"
+    )
     (tmp_path / "App.csproj").write_text("<Project/>", encoding="utf-8")
     (tmp_path / "gradlew.bat").write_text("", encoding="utf-8")
     (tmp_path / "app" / "src" / "main").mkdir(parents=True)
@@ -138,9 +154,15 @@ def test_command_detection_reads_project_files(tmp_path: Path) -> None:
 
 
 def test_resolve_executable_uses_path_lookup(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(runners.shutil, "which", lambda name: "/opt/npm.cmd" if name == "npm" else None)
-    assert runners.resolve_executable(runners.RunCommand("npm test", ("npm", "run", "test"), "x")) == [
-        "/opt/npm.cmd", "run", "test",
+    monkeypatch.setattr(
+        runners.shutil, "which", lambda name: "/opt/npm.cmd" if name == "npm" else None
+    )
+    assert runners.resolve_executable(
+        runners.RunCommand("npm test", ("npm", "run", "test"), "x")
+    ) == [
+        "/opt/npm.cmd",
+        "run",
+        "test",
     ]
     assert runners.resolve_executable(runners.RunCommand("x", ("nope", "--v"), "x")) is None
     absolute = runners.RunCommand("g", (str(tmp_path / "gradlew"), "test"), "x")
@@ -150,16 +172,28 @@ def test_resolve_executable_uses_path_lookup(tmp_path: Path, monkeypatch) -> Non
 def test_porcelain_parsing_handles_every_status_and_renames() -> None:
     raw = " M a.py\0A  b.py\0 D c.py\0?? d.txt\0R  new.py\0old.py\0UU e.py\0MM f.py\0"
     assert parse_porcelain_z(raw) == [
-        ("M", "a.py"), ("A", "b.py"), ("D", "c.py"), ("?", "d.txt"),
-        ("R", "new.py"), ("U", "e.py"), ("M", "f.py"),
+        ("M", "a.py"),
+        ("A", "b.py"),
+        ("D", "c.py"),
+        ("?", "d.txt"),
+        ("R", "new.py"),
+        ("U", "e.py"),
+        ("M", "f.py"),
     ]
     assert parse_porcelain_z("") == []
 
 
 def _git(repo: Path, *args: str) -> None:
-    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@e.com",
-           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@e.com"}
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True, env=env)
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@e.com",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@e.com",
+    }
+    subprocess.run(
+        ["git", "-C", str(repo), *args], check=True, capture_output=True, text=True, env=env
+    )
 
 
 def test_changed_files_lists_the_real_working_tree(tmp_path: Path) -> None:
@@ -181,7 +215,10 @@ def test_changed_files_lists_the_real_working_tree(tmp_path: Path) -> None:
 
 
 def test_pasted_paths_are_cleaned() -> None:
-    assert actions.clean_path_text('  "C:\\Users\\DELL\\My Project"  ') == "C:\\Users\\DELL\\My Project"
+    assert (
+        actions.clean_path_text('  "C:\\Users\\example\\My Project"  ')
+        == "C:\\Users\\example\\My Project"
+    )
     assert actions.clean_path_text("'/home/me/proj'") == "/home/me/proj"
     assert actions.clean_path_text("plain") == "plain"
     assert actions.clean_path_text('"') == '"'
@@ -194,7 +231,9 @@ def test_open_from_explorer_reuses_registers_or_asks_before_initialising(tmp_pat
     subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True, text=True)
     asked: list[str] = []
 
-    first = actions.resolve_open_target(registry, Path(f'"{repo}"'), lambda m: asked.append(m) or True)
+    first = actions.resolve_open_target(
+        registry, Path(f'"{repo}"'), lambda m: asked.append(m) or True
+    )
     assert first.name == "repo" and asked == []  # a Git repository needs no question
     assert actions.resolve_open_target(registry, repo, lambda m: False).id == first.id
     nested = repo / "deep" / "dir"
@@ -224,13 +263,29 @@ def test_open_from_explorer_reuses_registers_or_asks_before_initialising(tmp_pat
 
 def test_cli_integrate_is_windows_only_and_open_rejects_missing_folders(tmp_path: Path) -> None:
     data = tmp_path / "data"
-    env = {**os.environ, "XDG_DATA_HOME": str(data), "LOCALAPPDATA": str(data), "APPDATA": str(data),
-           "HOME": str(tmp_path)}
-    env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1] / "src") + os.pathsep + env.get("PYTHONPATH", "")
+    env = {
+        **os.environ,
+        "BREEZY_TRACE_DATA_DIR": str(data),
+        "XDG_DATA_HOME": str(data),
+        "LOCALAPPDATA": str(data),
+        "APPDATA": str(data),
+        "HOME": str(tmp_path),
+    }
+    env["PYTHONPATH"] = (
+        str(Path(__file__).resolve().parents[1] / "src") + os.pathsep + env.get("PYTHONPATH", "")
+    )
 
     def run(*args: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run([sys.executable, "-m", "breezy_trace", *args], check=False, cwd=tmp_path,
-                              env=env, capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
+        return subprocess.run(
+            [sys.executable, "-m", "breezy_trace", *args],
+            check=False,
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            stdin=subprocess.DEVNULL,
+        )
 
     missing = run("open", str(tmp_path / "nope"))
     assert missing.returncode == 1 and "error:" in missing.stderr

@@ -75,8 +75,12 @@ class IntroScreen(Screen[None]):
 
     def _logo_lines(self, tick: int, width: int) -> list[Text]:
         if width < LOGO_WIDTH:
-            return [Text(_centered(reveal_text(SMALL_TITLE, tick, LOGO_START), width),
-                         style=f"bold {PALETTE['ice']}")]
+            return [
+                Text(
+                    _centered(reveal_text(SMALL_TITLE, tick, LOGO_START), width),
+                    style=f"bold {PALETTE['ice']}",
+                )
+            ]
         pad = " " * ((width - LOGO_WIDTH) // 2)
         kind_styles = {
             "flash": f"bold {PALETTE['text']}",
@@ -91,9 +95,7 @@ class IntroScreen(Screen[None]):
             lines.append(line)
         return lines
 
-    def _path_line(
-        self, tick: int, width: int, total: int, colors: list[str | None]
-    ) -> Text:
+    def _path_line(self, tick: int, width: int, total: int, colors: list[str | None]) -> Text:
         line = Text()
         if tick < PATH_START:
             return line
@@ -128,23 +130,46 @@ class IntroScreen(Screen[None]):
             lines.append(Text())
         if tick >= LOG_STARTS[1] and total:
             if ready:
-                lines.append(entry(CHECK, PALETTE["clean"], "git state",
-                                   f"{total}/{total}", PALETTE["text"]))
+                lines.append(
+                    entry(CHECK, PALETTE["clean"], "git state", f"{total}/{total}", PALETTE["text"])
+                )
             else:
-                lines.append(entry(SPINNER[tick % len(SPINNER)], PALETTE["primary"],
-                                   "git state", f"{loaded}/{total}", PALETTE["muted"]))
+                lines.append(
+                    entry(
+                        SPINNER[tick % len(SPINNER)],
+                        PALETTE["primary"],
+                        "git state",
+                        f"{loaded}/{total}",
+                        PALETTE["muted"],
+                    )
+                )
         else:
             lines.append(Text())
         if tick >= ATTENTION_START and ready:
             if total == 0:
-                lines.append(entry("›", PALETTE["primary"], "next",
-                                   "press o to add a repository", PALETTE["text"]))
+                lines.append(
+                    entry(
+                        "›",
+                        PALETTE["primary"],
+                        "next",
+                        "press o to add a repository",
+                        PALETTE["text"],
+                    )
+                )
             elif attention:
-                lines.append(entry("!", PALETTE["dirty"], "attention",
-                                   f"{attention} need attention", PALETTE["dirty"]))
+                lines.append(
+                    entry(
+                        "!",
+                        PALETTE["dirty"],
+                        "attention",
+                        f"{attention} need attention",
+                        PALETTE["dirty"],
+                    )
+                )
             else:
-                lines.append(entry(CHECK, PALETTE["clean"], "attention",
-                                   "all clean", PALETTE["clean"]))
+                lines.append(
+                    entry(CHECK, PALETTE["clean"], "attention", "all clean", PALETTE["clean"])
+                )
         else:
             lines.append(Text())
         return lines

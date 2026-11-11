@@ -42,8 +42,10 @@ def detect_commands(root: Path, platform: str | None = None) -> list[RunCommand]
 
     pyproject = root / "pyproject.toml"
     if (
-        pyproject.is_file() or (root / "pytest.ini").is_file()
-        or (root / "tests").is_dir() or (root / "setup.cfg").is_file()
+        pyproject.is_file()
+        or (root / "pytest.ini").is_file()
+        or (root / "tests").is_dir()
+        or (root / "setup.cfg").is_file()
     ):
         found.append(RunCommand("pytest", ("python", "-m", "pytest"), "Python"))
         text = _read(pyproject)
@@ -56,12 +58,16 @@ def detect_commands(root: Path, platform: str | None = None) -> list[RunCommand]
             scripts = json.loads(_read(package)).get("scripts", {})
         except (ValueError, AttributeError):
             scripts = {}
-        manager = "pnpm" if (root / "pnpm-lock.yaml").is_file() else (
-            "yarn" if (root / "yarn.lock").is_file() else "npm"
+        manager = (
+            "pnpm"
+            if (root / "pnpm-lock.yaml").is_file()
+            else ("yarn" if (root / "yarn.lock").is_file() else "npm")
         )
         for name in NODE_SCRIPTS:
             if isinstance(scripts, dict) and name in scripts and _SCRIPT_NAME.match(name):
-                found.append(RunCommand(f"{manager} {name}", (manager, "run", name), "package.json"))
+                found.append(
+                    RunCommand(f"{manager} {name}", (manager, "run", name), "package.json")
+                )
 
     if (root / "Cargo.toml").is_file():
         for verb in ("test", "build", "clippy"):

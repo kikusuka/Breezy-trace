@@ -105,7 +105,9 @@ def build_handoff(db_path: Path, project: Project) -> str:
     decisions = store.list_decisions(project, limit=5)
     for decision in decisions:
         why = f" (why: {_one_line(decision['context'], 140)})" if decision["context"] else ""
-        out.append(f"- **{_one_line(decision['title'], 100)}**: {_one_line(decision['decision'], 160)}{why}")
+        out.append(
+            f"- **{_one_line(decision['title'], 100)}**: {_one_line(decision['decision'], 160)}{why}"
+        )
     if not decisions:
         out.append("- None recorded.")
 
@@ -187,7 +189,10 @@ def create_project(registry: ProjectRegistry, parent: Path, name: str) -> Projec
         try:
             result = subprocess.run(
                 ["git", "init", "-q", str(target)],
-                check=False, capture_output=True, text=True, timeout=30,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
         except (OSError, subprocess.SubprocessError) as error:
             raise ProjectError(f"Could not run git: {error}") from error
@@ -221,7 +226,11 @@ def clone_project(registry: ProjectRegistry, url: str, parent: Path) -> Project:
     try:
         result = subprocess.run(
             ["git", "clone", "--", url, str(target)],
-            check=False, capture_output=True, text=True, timeout=900, env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=900,
+            env=env,
         )
     except subprocess.TimeoutExpired as error:
         raise ProjectError("git clone took too long and was stopped.") from error
@@ -251,7 +260,10 @@ def adopt_folder(registry: ProjectRegistry, folder: Path) -> Project:
         try:
             result = subprocess.run(
                 ["git", "init", "-q", str(folder)],
-                check=False, capture_output=True, text=True, timeout=30,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
         except (OSError, subprocess.SubprocessError) as error:
             raise ProjectError(f"Could not run git: {error}") from error
@@ -280,4 +292,3 @@ def resolve_open_target(registry: ProjectRegistry, target: Path, confirm_init) -
         if not confirm_init(message):
             raise ProjectError("Cancelled; nothing was changed.") from error
         return adopt_folder(registry, target)
-

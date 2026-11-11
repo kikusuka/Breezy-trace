@@ -7,10 +7,16 @@ from breezy_trace.git import commit_activity, hot_files
 
 
 def _git(repo: Path, *args: str) -> None:
-    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
-           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True,
-                   text=True, env=env)
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+    subprocess.run(
+        ["git", "-C", str(repo), *args], check=True, capture_output=True, text=True, env=env
+    )
 
 
 def _commit(repo: Path, filename: str, text: str) -> None:
@@ -59,6 +65,9 @@ def test_commit_graph_and_line_parsing(tmp_path: Path) -> None:
     assert commit_graph(tmp_path / "missing") == []
 
     assert parse_graph_line("| * 1a2b3c4 (origin/main, tag: v1) Fix thing") == (
-        "| * ", "1a2b3c4", ["origin/main", "tag: v1"], "Fix thing",
+        "| * ",
+        "1a2b3c4",
+        ["origin/main", "tag: v1"],
+        "Fix thing",
     )
     assert parse_graph_line("|\\  ") == ("|\\  ", "", [], "")

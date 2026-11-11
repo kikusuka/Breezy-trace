@@ -19,13 +19,23 @@ WEEKDAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturd
 MAX_STAT_FILES = 20000
 
 LANGUAGE_BY_EXTENSION: dict[str, str] = {
-    ".py": "Python", ".pyi": "Python",
-    ".js": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript", ".jsx": "JavaScript",
-    ".ts": "TypeScript", ".tsx": "TypeScript",
-    ".kt": "Kotlin", ".kts": "Kotlin",
+    ".py": "Python",
+    ".pyi": "Python",
+    ".js": "JavaScript",
+    ".mjs": "JavaScript",
+    ".cjs": "JavaScript",
+    ".jsx": "JavaScript",
+    ".ts": "TypeScript",
+    ".tsx": "TypeScript",
+    ".kt": "Kotlin",
+    ".kts": "Kotlin",
     ".java": "Java",
-    ".c": "C", ".h": "C",
-    ".cc": "C++", ".cpp": "C++", ".cxx": "C++", ".hpp": "C++",
+    ".c": "C",
+    ".h": "C",
+    ".cc": "C++",
+    ".cpp": "C++",
+    ".cxx": "C++",
+    ".hpp": "C++",
     ".cs": "C#",
     ".go": "Go",
     ".rs": "Rust",
@@ -33,9 +43,13 @@ LANGUAGE_BY_EXTENSION: dict[str, str] = {
     ".php": "PHP",
     ".swift": "Swift",
     ".dart": "Dart",
-    ".html": "HTML", ".htm": "HTML",
-    ".css": "CSS", ".scss": "CSS",
-    ".sh": "Shell", ".bat": "Shell", ".ps1": "Shell",
+    ".html": "HTML",
+    ".htm": "HTML",
+    ".css": "CSS",
+    ".scss": "CSS",
+    ".sh": "Shell",
+    ".bat": "Shell",
+    ".ps1": "Shell",
     ".sql": "SQL",
     ".md": "Markdown",
 }
@@ -234,15 +248,24 @@ def collect_repo_metrics(path: Path, today: date | None = None) -> RepoMetrics |
 
     metrics = RepoMetrics()
     try:
-        metrics.total_commits = int(_stdout(run_git(path, "rev-list", "--count", "HEAD")).strip() or 0)
+        metrics.total_commits = int(
+            _stdout(run_git(path, "rev-list", "--count", "HEAD")).strip() or 0
+        )
     except ValueError:
         metrics.total_commits = 0
 
     commits = parse_commit_log(
         _stdout(
             run_git(
-                path, "log", "--branches", "--remotes", f"--since={HISTORY_DAYS} days ago",
-                "-n", "5000", "--format=%aI%x09%an", timeout=8,
+                path,
+                "log",
+                "--branches",
+                "--remotes",
+                f"--since={HISTORY_DAYS} days ago",
+                "-n",
+                "5000",
+                "--format=%aI%x09%an",
+                timeout=8,
             )
         )
     )
@@ -269,14 +292,22 @@ def collect_repo_metrics(path: Path, today: date | None = None) -> RepoMetrics |
     added, deleted, touched = parse_numstat(
         _stdout(
             run_git(
-                path, "log", "--branches", "--remotes", "--since=30 days ago",
-                "--numstat", "--format=", timeout=10,
+                path,
+                "log",
+                "--branches",
+                "--remotes",
+                "--since=30 days ago",
+                "--numstat",
+                "--format=",
+                timeout=10,
             )
         )
     )
     metrics.lines_added, metrics.lines_deleted, metrics.files_touched = added, deleted, touched
 
-    names = [name for name in _stdout(run_git(path, "ls-files", "-z", timeout=10)).split("\0") if name]
+    names = [
+        name for name in _stdout(run_git(path, "ls-files", "-z", timeout=10)).split("\0") if name
+    ]
     sized: list[tuple[str, int]] = []
     for name in names[:MAX_STAT_FILES]:
         try:
@@ -312,15 +343,30 @@ def since_digest(path: Path, since: datetime) -> SinceDigest | None:
     """Commits and line changes on local branches and remotes since ``since``."""
     stamp = since.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S +0000")
     log = run_git(
-        path, "log", "--branches", "--remotes", f"--since={stamp}", "-n", "500",
-        "--format=%h%x09%an%x09%s", timeout=8,
+        path,
+        "log",
+        "--branches",
+        "--remotes",
+        f"--since={stamp}",
+        "-n",
+        "500",
+        "--format=%h%x09%an%x09%s",
+        timeout=8,
     )
     if log is None or log.returncode != 0:
         return None
     rows = [line.split("\t", 2) for line in log.stdout.splitlines() if line.count("\t") >= 2]
     stats = run_git(
-        path, "log", "--branches", "--remotes", f"--since={stamp}", "-n", "500",
-        "--numstat", "--format=", timeout=8,
+        path,
+        "log",
+        "--branches",
+        "--remotes",
+        f"--since={stamp}",
+        "-n",
+        "500",
+        "--numstat",
+        "--format=",
+        timeout=8,
     )
     added, deleted, files = parse_numstat(_stdout(stats))
     return SinceDigest(

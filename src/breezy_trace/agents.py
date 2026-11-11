@@ -94,7 +94,9 @@ def _opencode_roots() -> list[Path]:
     return candidates
 
 
-def discover_claude_sessions(project_path: Path, claude_home: Path | None = None) -> list[AgentSession]:
+def discover_claude_sessions(
+    project_path: Path, claude_home: Path | None = None
+) -> list[AgentSession]:
     """Read only Claude Code sessions-index.json metadata for this project."""
     root = (claude_home or _claude_home()) / "projects"
     project_path = project_path.expanduser().resolve()
@@ -109,7 +111,9 @@ def discover_claude_sessions(project_path: Path, claude_home: Path | None = None
         if not isinstance(entries, list):
             continue
         for entry in entries:
-            if not isinstance(entry, dict) or not _project_matches(entry.get("projectPath"), project_path):
+            if not isinstance(entry, dict) or not _project_matches(
+                entry.get("projectPath"), project_path
+            ):
                 continue
             external_id = entry.get("sessionId")
             if not isinstance(external_id, str) or not external_id:
@@ -121,14 +125,16 @@ def discover_claude_sessions(project_path: Path, claude_home: Path | None = None
                 safe_metadata["git_branch"] = branch
             if isinstance(count, int) and count >= 0:
                 safe_metadata["message_count"] = count
-            found.append(AgentSession(
-                provider="claude-code",
-                external_id=external_id,
-                started_at=_iso(entry.get("created")),
-                ended_at=_iso(entry.get("modified")),
-                source="sessions-index",
-                metadata=safe_metadata,
-            ))
+            found.append(
+                AgentSession(
+                    provider="claude-code",
+                    external_id=external_id,
+                    started_at=_iso(entry.get("created")),
+                    ended_at=_iso(entry.get("modified")),
+                    source="sessions-index",
+                    metadata=safe_metadata,
+                )
+            )
     return found
 
 
@@ -154,14 +160,16 @@ def discover_opencode_sessions(
             version = session.get("version")
             if isinstance(version, str):
                 safe_metadata["version"] = version
-            found.append(AgentSession(
-                provider="opencode",
-                external_id=external_id,
-                started_at=_iso(times.get("created")),
-                ended_at=_iso(times.get("updated")),
-                source="session-metadata",
-                metadata=safe_metadata,
-            ))
+            found.append(
+                AgentSession(
+                    provider="opencode",
+                    external_id=external_id,
+                    started_at=_iso(times.get("created")),
+                    ended_at=_iso(times.get("updated")),
+                    source="session-metadata",
+                    metadata=safe_metadata,
+                )
+            )
     return found
 
 
@@ -197,8 +205,13 @@ class AgentSessionStore:
                         metadata_json = excluded.metadata_json
                     """,
                     (
-                        stable_id, project.id, session.provider, session.external_id,
-                        session.started_at, session.ended_at, session.source,
+                        stable_id,
+                        project.id,
+                        session.provider,
+                        session.external_id,
+                        session.started_at,
+                        session.ended_at,
+                        session.source,
                         json.dumps(session.metadata, sort_keys=True),
                     ),
                 )

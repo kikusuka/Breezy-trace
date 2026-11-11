@@ -12,9 +12,21 @@ def _repo(path: Path) -> Path:
     (path / "app.py").write_text("def hello():\n    return 1\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(path), "add", "."], check=True, capture_output=True, text=True)
     subprocess.run(
-        ["git", "-C", str(path), "-c", "user.name=t", "-c", "user.email=t@e.com",
-         "commit", "-m", "init"],
-        check=True, capture_output=True, text=True,
+        [
+            "git",
+            "-C",
+            str(path),
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e.com",
+            "commit",
+            "-m",
+            "init",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     return path
 
@@ -69,7 +81,9 @@ def test_search_finds_notes_tasks_and_decisions_and_escapes_wildcards(tmp_path: 
 
     rows = store.search_all("picker")
     assert {(row["project_name"], row["kind"]) for row in rows} == {
-        ("alpha", "note"), ("beta", "task"), ("beta", "decision"),
+        ("alpha", "note"),
+        ("beta", "task"),
+        ("beta", "decision"),
     }
     assert store.search_all("zzz") == []
     assert store.search_all("   ") == []
@@ -89,10 +103,17 @@ def test_handoff_summarises_state_and_exports_markdown(tmp_path: Path) -> None:
 
     text = actions.build_handoff(db, project)
     for expected in (
-        "# proj: handoff", "## Latest notes", "**Resume here**", "- [ ] Wire the picker",
-        "**Storage**: Use SQLite (why: simple and local)", "## Recent commits", "`app.py`",
+        "# proj: handoff",
+        "## Latest notes",
+        "**Resume here**",
+        "- [ ] Wire the picker",
+        "**Storage**: Use SQLite (why: simple and local)",
+        "## Recent commits",
+        "`app.py`",
     ):
         assert expected in text
     exported = actions.export_handoff(db, project, tmp_path / "handoffs")
     assert exported.exists() and exported.name.startswith("handoff-proj-")
-    assert exported.read_text(encoding="utf-8") == text or "Generated" in exported.read_text(encoding="utf-8")
+    assert exported.read_text(encoding="utf-8") == text or "Generated" in exported.read_text(
+        encoding="utf-8"
+    )
