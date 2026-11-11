@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,7 +9,9 @@ description = "Local-first project memory and development intelligence for your 
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Breezy Labs" }]
+maintainers = [{ name = "Breezy Labs" }]
 keywords = [
   "git",
   "developer-tools",
@@ -31,9 +33,9 @@ classifiers = [
   "Topic :: Software Development :: Version Control :: Git",
 ]
 dependencies = [
-  "platformdirs>=4.0",
-  "textual>=0.70",
-  "rich>=13.7",
+  "platformdirs>=4.0,<5",
+  "textual>=0.70,<9",
+  "rich>=13.7,<16",
 ]
 
 [project.optional-dependencies]
@@ -47,7 +49,9 @@ btrace = "breezy_trace.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/kikusuka/Breezy-trace"
+Documentation = "https://github.com/kikusuka/Breezy-trace#readme"
 Issues = "https://github.com/kikusuka/Breezy-trace/issues"
+Changelog = "https://github.com/kikusuka/Breezy-trace/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -59,3 +63,14 @@ addopts = "-q"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "BLE", "UP", "SIM", "C4", "PIE", "RUF100"]
+
+[tool.coverage.run]
+branch = true
+source = ["breezy_trace"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

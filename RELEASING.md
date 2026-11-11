@@ -7,7 +7,9 @@ Use this checklist for every tagged release. Do not publish from an unreviewed b
 - [ ] Review the complete pull request diff and confirm the release version.
 - [ ] Confirm the 3 operating systems × 3 Python versions CI matrix is green.
 - [ ] Confirm the dependency audit workflow is green.
-- [ ] Run `ruff check .` and `pytest` locally.
+- [ ] Confirm the README install instructions and `CHANGELOG.md` are current.
+- [ ] Run `ruff format --check .` and `ruff check .` locally.
+- [ ] Run `pytest` locally.
 - [ ] Build both distributions with `python -m build`.
 - [ ] Validate distributions with `python -m twine check dist/*`.
 - [ ] Install the wheel into a clean virtual environment and smoke-test:
