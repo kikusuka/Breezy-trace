@@ -33,8 +33,14 @@ Release branch: `release/prepare-first-release`
 21. **Rebuild after the fix:** the wheel and source package were rebuilt; `twine check` passed; a brand-new environment installed the wheel; all three help commands worked; `breezy-trace projects` with the override showed no projects, confirming isolation.
 22. **Publishing:** still on hold. The owner will decide after the release branch is merged, pushed, and CI passes. Nothing was pushed or published.
 23. **GitHub history discovered:** the GitHub repository already has its own `main` and many branches. GitHub `main` is at `e2d448e`. The local baseline snapshot is identical to that tree, but the local commits have no shared history with it. Pushing the current branch as-is would be wrong.
-24. **Safe release path:** rebuild the release work on a new branch from `origin/main`, apply the three release commits, rerun tests and build, then push that branch and open a pull request. Do not force-push and do not push the current unrelated branch as-is.
+24. **Safe release path:** rebuild the release work on a new branch from `origin/main`, apply the four release commits, rerun tests and build, then push that branch and open a pull request. Do not force-push and do not push the current unrelated branch as-is.
 25. **Handoff:** the owner approved a plain-English handoff note for the person who will push and run GitHub checks. It is saved as `opencode breezy trace release handoff 11-11-26.md`.
+26. **Rebuild approved in a new folder:** the owner approved rebuilding the release work on top of the existing GitHub `main` in a new project folder, keeping the original folder and branch as a backup.
+27. **Clean rebuild:** created the new folder `C:\Users\DELL\Downloads\Breezy-trace-release-clean` and branch `release/prepare-first-release-clean` from `origin/main` at `e2d448e`. The four local release commits were applied as `b81e663`, `d5747e3`, `086434c`, and `9528c6d`.
+28. **Rebuilt branch checks:** `ruff` passed; tests passed with **163 passed, 2 skipped**; the wheel and source package built; `twine check` passed; a clean install ran all three help commands successfully; the isolated data-folder check showed no projects.
+29. **Real local list:** remained unchanged with `DELL`, `cyrrus`, and `Breezy-trace` after the rebuilt test run.
+30. **Handoff updated:** a new “Update — 12/11/26” section in the handoff note gives the new folder, new branch, commit list, test/build results, and the instruction to use the new branch for the pull request.
+31. **Publishing:** still on hold. Nothing was pushed, tagged, released, or uploaded. The owner will decide on publishing after the pull request and CI checks pass.
 
 ## Saved history
 
