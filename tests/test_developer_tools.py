@@ -30,22 +30,22 @@ class FakeWinreg:
         self.values: dict[tuple[str, str], str] = {}
         self.keys: set[str] = set()
 
-    def CreateKey(self, root, path):  # noqa: N802
+    def CreateKey(self, root, path):
         self.keys.add(path)
         return FakeKey(self, path)
 
-    def SetValueEx(self, key, name, _reserved, _kind, value):  # noqa: N802
+    def SetValueEx(self, key, name, _reserved, _kind, value):
         self.values[(key.path, name)] = value
 
-    def OpenKey(self, root, path):  # noqa: N802
+    def OpenKey(self, root, path):
         if path not in self.keys:
             raise FileNotFoundError(path)
         return FakeKey(self, path)
 
-    def QueryValueEx(self, key, name):  # noqa: N802
+    def QueryValueEx(self, key, name):
         return (self.values[(key.path, name)], 1)
 
-    def DeleteKey(self, root, path):  # noqa: N802
+    def DeleteKey(self, root, path):
         if path not in self.keys:
             raise FileNotFoundError(path)
         self.keys.discard(path)

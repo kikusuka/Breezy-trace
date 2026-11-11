@@ -61,7 +61,7 @@ def terminal_command(path: Path, platform: str | None = None, which=shutil.which
 
 def _spawn(command: list[str], cwd: Path | None = None) -> None:
     try:
-        subprocess.Popen(  # noqa: S603  (a fixed program chosen above, never user text)
+        subprocess.Popen(
             command, cwd=cwd, stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )

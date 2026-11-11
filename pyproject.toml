@@ -9,12 +9,26 @@ description = "Local-first project memory and development intelligence for your 
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+authors = [{ name = "Breezy Labs" }]
+keywords = [
+  "git",
+  "developer-tools",
+  "project-memory",
+  "terminal",
+  "tui",
+  "local-first",
+  "productivity",
+]
 classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Version Control :: Git",
 ]
 dependencies = [
   "platformdirs>=4.0",
@@ -30,6 +44,10 @@ code = ["tree-sitter-language-pack>=1.24,<2"]
 breezy-trace = "breezy_trace.cli:main"
 trace = "breezy_trace.cli:main"
 btrace = "breezy_trace.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kikusuka/Breezy-trace"
+Issues = "https://github.com/kikusuka/Breezy-trace/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

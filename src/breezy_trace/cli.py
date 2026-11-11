@@ -6,8 +6,7 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from breezy_trace import __version__
-from breezy_trace import integrate
+from breezy_trace import __version__, integrate
 from breezy_trace.actions import (
     build_handoff,
     clone_project,
