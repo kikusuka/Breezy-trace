@@ -60,6 +60,10 @@ fix: close registry connections after lookup
 docs: explain optional multi-language indexing
 ```
 
+## Community
+
+By participating in this project, you agree to follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
 ## Security
 
 Do not report security issues in a public issue. Follow [SECURITY.md](SECURITY.md).

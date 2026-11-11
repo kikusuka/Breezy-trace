@@ -9,9 +9,9 @@ from breezy_trace.metrics import collect_repo_metrics, lobby_metrics
 
 def test_parse_commit_log_reads_local_author_time_and_skips_garbage() -> None:
     commits = metrics.parse_commit_log(
-        "2026-11-06T23:10:00+05:30\tKiku\nnot a date\tX\n2026-11-02T08:00:00+00:00\t\n"
+        "2026-11-06T23:10:00+05:30\tAlex\nnot a date\tX\n2026-11-02T08:00:00+00:00\t\n"
     )
-    assert [(c[0].hour, c[1]) for c in commits] == [(23, "Kiku"), (8, "unknown")]
+    assert [(c[0].hour, c[1]) for c in commits] == [(23, "Alex"), (8, "unknown")]
     weekday, hours = metrics.rhythm(commits)
     assert weekday[datetime(2026, 11, 6).weekday()] == 1 and hours[23] == 1
 
@@ -66,9 +66,9 @@ def test_lobby_metrics_summarise_all_projects() -> None:
 def _git(repo: Path, *args: str) -> None:
     env = {
         **os.environ,
-        "GIT_AUTHOR_NAME": "Kiku",
+        "GIT_AUTHOR_NAME": "Alex",
         "GIT_AUTHOR_EMAIL": "k@example.com",
-        "GIT_COMMITTER_NAME": "Kiku",
+        "GIT_COMMITTER_NAME": "Alex",
         "GIT_COMMITTER_EMAIL": "k@example.com",
     }
     subprocess.run(
@@ -96,7 +96,7 @@ def test_collect_repo_metrics_on_a_real_repository(tmp_path: Path) -> None:
     assert result.first_commit == date.today() and result.last_commit is not None
     assert result.tracked_files == 2 and result.tracked_bytes > 0
     assert result.tags == 1 and result.heads == 1
-    assert result.contributors == 1 and result.authors == [("Kiku", 2)]
+    assert result.contributors == 1 and result.authors == [("Alex", 2)]
     assert result.lines_added >= 4 and result.files_touched == 2
     assert {name for name, _ in result.languages} == {"Python", "Markdown"}
     assert result.hot[0] == ("app.py", 2)

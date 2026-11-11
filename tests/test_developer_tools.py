@@ -216,8 +216,8 @@ def test_changed_files_lists_the_real_working_tree(tmp_path: Path) -> None:
 
 def test_pasted_paths_are_cleaned() -> None:
     assert (
-        actions.clean_path_text('  "C:\\Users\\DELL\\My Project"  ')
-        == "C:\\Users\\DELL\\My Project"
+        actions.clean_path_text('  "C:\\Users\\example\\My Project"  ')
+        == "C:\\Users\\example\\My Project"
     )
     assert actions.clean_path_text("'/home/me/proj'") == "/home/me/proj"
     assert actions.clean_path_text("plain") == "plain"

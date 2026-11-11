@@ -9,16 +9,16 @@ from breezy_trace.remotes import list_remotes, parse_remote_url, primary_remote,
 def test_common_remote_url_shapes_are_parsed() -> None:
     cases = [
         (
-            "git@github.com:kiku/breezy-trace.git",
+            "git@github.com:example/breezy-trace.git",
             "GitHub",
-            "kiku/breezy-trace",
-            "https://github.com/kiku/breezy-trace",
+            "example/breezy-trace",
+            "https://github.com/example/breezy-trace",
         ),
         (
-            "https://github.com/kiku/breezy-trace",
+            "https://github.com/example/breezy-trace",
             "GitHub",
-            "kiku/breezy-trace",
-            "https://github.com/kiku/breezy-trace",
+            "example/breezy-trace",
+            "https://github.com/example/breezy-trace",
         ),
         (
             "https://gitlab.com/group/sub/repo.git",
@@ -50,10 +50,12 @@ def test_common_remote_url_shapes_are_parsed() -> None:
 
 
 def test_credentials_in_urls_are_never_kept() -> None:
-    remote = parse_remote_url("origin", "https://ghp_SECRETTOKEN123:x-oauth@github.com/kiku/r.git")
+    remote = parse_remote_url(
+        "origin", "https://ghp_SECRETTOKEN123:x-oauth@github.com/example/r.git"
+    )
     assert remote is not None
     assert "SECRET" not in repr(remote) and "SECRET" not in remote.web_url
-    assert remote.label == "GitHub · kiku/r"
+    assert remote.label == "GitHub · example/r"
 
 
 def test_local_paths_and_garbage_are_not_remotes() -> None:

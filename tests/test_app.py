@@ -653,7 +653,7 @@ def test_resume_shows_where_the_project_lives_and_w_opens_it(tmp_path: Path, mon
     _isolate(tmp_path, monkeypatch)
     hosted = _init_repo(tmp_path / "hosted")
     local_only = _init_repo(tmp_path / "local-only")
-    _register_with_origin(registry_module, hosted, "git@github.com:kiku/hosted.git")
+    _register_with_origin(registry_module, hosted, "git@github.com:example/hosted.git")
     opened: list[str] = []
     monkeypatch.setattr(app_module.webbrowser, "open", lambda url: opened.append(url) or True)
 
@@ -662,16 +662,16 @@ def test_resume_shows_where_the_project_lives_and_w_opens_it(tmp_path: Path, mon
             app = pilot.app
             app._handle_project_pick(hosted)
             await settle(pilot)
-            assert "GitHub · kiku/hosted" in app._parts["overview"][0].plain
+            assert "GitHub · example/hosted" in app._parts["overview"][0].plain
             app.action_open_web()
-            assert opened == ["https://github.com/kiku/hosted"]
+            assert opened == ["https://github.com/example/hosted"]
 
             app._handle_project_pick(local_only)
             await settle(pilot)
             assert "Local only" in app._parts["overview"][0].plain
             app.action_open_web()
             assert opened == [
-                "https://github.com/kiku/hosted"
+                "https://github.com/example/hosted"
             ]  # nothing opened for a local-only repo
 
     asyncio.run(exercise())

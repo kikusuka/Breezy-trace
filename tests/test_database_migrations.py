@@ -16,7 +16,12 @@ def _make_legacy_database(path: Path, version: int) -> None:
                 INSERT INTO projects (id, name, path, registered_at)
                 VALUES (?, ?, ?, ?)
                 """,
-                ("project-1", "preserved", "/tmp/preserved", "2026-01-01T00:00:00"),
+                (
+                    "project-1",
+                    "preserved",
+                    str(path.parent / "preserved-project"),
+                    "2026-01-01T00:00:00",
+                ),
             )
             connection.execute(
                 """

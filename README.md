@@ -211,7 +211,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and [RELEASI
 
 ## Current scope and limitations
 
-The current release candidate includes project registration, a terminal dashboard, notes/tasks/decisions, Git working-tree status, staged and unstaged diff summaries, conflict and stash counts, local branch and upstream intelligence, cached remote-tracking branches, local-only/upstream-only commit summaries, recent local commit history, a resume summary, and portable SQLite backup/restore.
+Breezy Trace 0.1.0 includes project registration, a terminal dashboard, notes/tasks/decisions, Git working-tree status, staged and unstaged diff summaries, conflict and stash counts, local branch and upstream intelligence, cached remote-tracking branches, local-only/upstream-only commit summaries, recent local commit history, a resume summary, and portable SQLite backup/restore.
 
 **Agent sessions.** Claude Code and OpenCode metadata-only session discovery is available through `breezy-trace sessions --sync`. Breezy Trace reads Claude Code `sessions-index.json` and OpenCode session metadata JSON only; it does not read transcript/message stores or persist prompt text, summaries, or session titles. Cursor, Windsurf, VS Code, Zed, file-activity-to-agent correlation, remote-provider APIs, resolved call graphs, and agent-to-file attribution are not implemented yet and are not claimed as available.
 
@@ -223,7 +223,7 @@ The current release candidate includes project registration, a terminal dashboar
 
 ## Contributing
 
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the local setup, checks, and pull-request expectations. For security issues, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the local setup, checks, and pull-request expectations, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. For security issues, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
 ## License
 

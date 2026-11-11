@@ -86,7 +86,7 @@ def test_clone_project_clones_registers_and_validates_input(tmp_path: Path) -> N
 
 
 def test_clone_names_and_credential_redaction() -> None:
-    assert actions.clone_name("https://github.com/kiku/breezy-trace.git") == "breezy-trace"
+    assert actions.clone_name("https://github.com/example/breezy-trace.git") == "breezy-trace"
     assert actions.clone_name("git@gitlab.com:group/sub/tool.git") == "tool"
     assert actions.clone_name("/srv/git/local.git") == "local"
     redacted = actions._redact("fatal: unable to access 'https://user:tok3n@github.com/o/r.git/'")
