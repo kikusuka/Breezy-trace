@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-12
+
+### Fixed
+
+- Updated the publish workflow to use an action revision that pins nested actions by full commit SHA, satisfying repository action pinning policy.
+
 ## [0.1.0] - 2026-11-12
 
 The first public release of Breezy Trace.
@@ -40,5 +46,6 @@ The first public release of Breezy Trace.
 - File activity requires an explicit scan and does not run a background watcher.
 - Multi-language code indexing requires the optional `breezy-trace[code]` extra.
 
-[Unreleased]: https://github.com/kikusuka/Breezy-trace/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/kikusuka/Breezy-trace/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/kikusuka/Breezy-trace/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kikusuka/Breezy-trace/releases/tag/v0.1.0
