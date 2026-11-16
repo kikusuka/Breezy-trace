@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- One-line installers: `scripts/install.ps1` for Windows PowerShell 5.1 (no administrator rights) and `scripts/install.sh` for macOS and Linux. Both install uv when needed, install Breezy Trace as a uv tool, add the command to `PATH`, verify the install, and are safe to run again.
+- `breezy-trace update` upgrades Breezy Trace with the method it was installed with (uv tool, pipx, or plain pip), asks for confirmation unless `--yes` is given, and refuses editable development checkouts with an explanation.
+- `breezy-trace update --check` asks the PyPI JSON API once, with a 10-second timeout, whether a newer version exists. It sends no project data and never runs automatically.
+- On Windows, `breezy-trace update` finishes the upgrade in a visible console window after the current process exits, writes a log file, and prints the exact manual command if the helper cannot start.
+- `install-smoke` CI workflow runs both installers on Ubuntu, macOS, and Windows and checks `breezy-trace --version`.
+
+### Changed
+
+- README leads with the one-line installers and `uv tool install`, explains why plain `pip install` can leave the command "not found", and uses absolute GitHub links for community files so they work on the PyPI page.
+- README privacy section now documents the explicit, single PyPI version check.
+- CI matrix and package classifiers now include Python 3.14.
+
 ## [0.1.0] - 2026-11-12
 
 The first public release of Breezy Trace.
