@@ -26,3 +26,15 @@ def test_cli_help_lists_backup_and_inspect() -> None:
     assert "branches" in result.stdout
     assert "activity" in result.stdout
     assert "code" in result.stdout
+    assert "update" in result.stdout
+
+
+def test_update_help_lists_check_and_yes() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "breezy_trace", "update", "--help"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "--check" in result.stdout
+    assert "--yes" in result.stdout

@@ -62,6 +62,16 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("projects", help="List registered projects.")
     commands.add_parser("home", help="Open the global project dashboard.")
 
+    update = commands.add_parser(
+        "update", help="Upgrade Breezy Trace using the method it was installed with."
+    )
+    update.add_argument(
+        "--check",
+        action="store_true",
+        help="Ask PyPI once whether a newer version exists, without upgrading.",
+    )
+    update.add_argument("--yes", action="store_true", help="Skip the confirmation prompt.")
+
     backup = commands.add_parser("backup", help="Create a portable backup of local project data.")
     backup.add_argument(
         "--output", type=Path, help="Backup file path (defaults to app data directory)."
@@ -263,6 +273,14 @@ def _print_resume(project, registry: ProjectRegistry) -> None:
 def main() -> None:
     parser = build_parser()
     args, remainder = parser.parse_known_args()
+
+    if args.command == "update":
+        if remainder:
+            parser.error(f"Unrecognized arguments: {' '.join(remainder)}")
+        from breezy_trace import updater
+
+        raise SystemExit(updater.run_update(check=args.check, assume_yes=args.yes))
+
     registry = ProjectRegistry()
 
     if args.command in {
