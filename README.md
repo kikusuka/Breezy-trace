@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/kikusuka/Breezy-trace/actions/workflows/ci.yml/badge.svg)](https://github.com/kikusuka/Breezy-trace/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/kikusuka/Breezy-trace/blob/main/LICENSE)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-orange)](#current-scope-and-limitations)
 
 Breezy Trace is a local-first developer workspace from **Breezy Labs**. It keeps project registration, Git state, notes, tasks, decisions, and recent local commit history together, so you can return to a repository without reconstructing your context from scratch.
@@ -26,16 +26,54 @@ Breezy Trace is a local-first developer workspace from **Breezy Labs**. It keeps
 
 ## Install
 
-### From PyPI
+### One-line installer
+
+Windows PowerShell (no administrator rights needed):
+
+```powershell
+powershell -NoProfile -c "irm https://raw.githubusercontent.com/kikusuka/Breezy-trace/main/scripts/install.ps1 | iex"
+```
+
+macOS or Linux:
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/kikusuka/Breezy-trace/main/scripts/install.sh | sh
+```
+
+The installer installs uv if it is missing, installs Breezy Trace as a uv tool, adds the command to your `PATH`, and verifies the install. The Windows installer also accepts `-Version 0.1.0` and `-WithCode`; the Unix installer accepts `--version 0.1.0` and `--with-code`.
+
+### With uv
+
+If you already have uv:
+
+```bash
+uv tool install breezy-trace
+uv tool update-shell
+```
+
+Restart your terminal after the first install so the `breezy-trace` command is available. For optional multi-language code indexing:
+
+```bash
+uv tool install "breezy-trace[code]"
+```
+
+### Updating
+
+```bash
+breezy-trace update --check
+breezy-trace update
+```
+
+`update --check` asks PyPI once whether a newer version exists. `update` uses the method Breezy Trace was installed with (uv tool, pipx, or pip), asks for confirmation, and refuses to touch editable development checkouts. Nothing checks for updates automatically.
+
+### Plain pip
+
+Plain `pip install breezy-trace` can leave the command in Python's `Scripts` folder (or `bin` on macOS/Linux), which is often not on your `PATH`, the list of folders your terminal searches for commands. The installers and `uv tool install` avoid this by putting the command in a folder that uv adds to your `PATH`.
+
+If you prefer pip:
 
 ```bash
 python -m pip install breezy-trace
-```
-
-For optional multi-language code indexing:
-
-```bash
-python -m pip install "breezy-trace[code]"
 ```
 
 ### From a checkout
@@ -160,6 +198,8 @@ On the classic Windows console, thin block characters are replaced with widely a
 | `breezy-trace tasks --all` | Include completed tasks. |
 | `breezy-trace done <task-id>` | Complete an open task. |
 | `breezy-trace decision "Title" "Decision"` | Record a project decision. |
+| `breezy-trace update --check` | Ask PyPI once whether a newer version exists (one request, no upgrade). |
+| `breezy-trace update [--yes]` | Upgrade with the method used to install Breezy Trace (uv tool, pipx, or pip). |
 | `breezy-trace unregister <name-or-path>` | Remove a project from the selector. |
 
 Journal commands operate on the registered project containing the current working directory. They do not silently create or register projects.
@@ -170,7 +210,7 @@ The application database is stored in the operating system's per-user applicatio
 
 Unregistering a project removes its registry record and associated journal data through SQLite foreign-key cascading. Back up the application data directory before manually changing or deleting it.
 
-Breezy Trace does not run a background watcher, startup fetch, or network call. Network access happens only when you explicitly clone a repository or explicitly index a language whose grammar is not cached locally. Agent integrations read metadata only and never read prompts or transcripts.
+Breezy Trace does not run a background watcher, startup fetch, or automatic update check. Network access happens only when you explicitly clone a repository, explicitly index a language whose grammar is not cached locally, or run `breezy-trace update --check`. That check sends one request to `https://pypi.org/pypi/breezy-trace/json` with a 10-second timeout and sends no project data; `breezy-trace update` downloads the package from PyPI through uv, pipx, or pip. Agent integrations read metadata only and never read prompts or transcripts.
 
 ## Shell prompt
 
@@ -207,7 +247,7 @@ For a reproducible cold/incremental indexing benchmark against a synthetic repos
 python scripts/benchmark_index.py --files 1000
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and [RELEASING.md](RELEASING.md) for the full pre-release and publishing checklist.
+See [CONTRIBUTING.md](https://github.com/kikusuka/Breezy-trace/blob/main/CONTRIBUTING.md) for the development workflow and [RELEASING.md](https://github.com/kikusuka/Breezy-trace/blob/main/RELEASING.md) for the full pre-release and publishing checklist.
 
 ## Current scope and limitations
 
@@ -223,10 +263,10 @@ Breezy Trace 0.1.0 includes project registration, a terminal dashboard, notes/ta
 
 ## Contributing
 
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the local setup, checks, and pull-request expectations, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. For security issues, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+Contributions are welcome. Read [CONTRIBUTING.md](https://github.com/kikusuka/Breezy-trace/blob/main/CONTRIBUTING.md) for the local setup, checks, and pull-request expectations, and [CODE_OF_CONDUCT.md](https://github.com/kikusuka/Breezy-trace/blob/main/CODE_OF_CONDUCT.md) for community expectations. For security issues, follow [SECURITY.md](https://github.com/kikusuka/Breezy-trace/blob/main/SECURITY.md) instead of opening a public issue.
 
 ## License
 
-Breezy Trace is released under the MIT License. See [LICENSE](LICENSE) for the complete terms.
+Breezy Trace is released under the MIT License. See [LICENSE](https://github.com/kikusuka/Breezy-trace/blob/main/LICENSE) for the complete terms.
 
 Copyright (c) 2026 Breezy.

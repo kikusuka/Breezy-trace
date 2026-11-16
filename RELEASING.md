@@ -5,7 +5,8 @@ Use this checklist for every tagged release. Do not publish from an unreviewed b
 ## Before creating a release
 
 - [ ] Review the complete pull request diff and confirm the release version.
-- [ ] Confirm the 3 operating systems × 3 Python versions CI matrix is green.
+- [ ] Confirm the 3 operating systems × 4 Python versions CI matrix is green.
+- [ ] Confirm the installer smoke workflow is green.
 - [ ] Confirm the dependency audit workflow is green.
 - [ ] Confirm the README install instructions and `CHANGELOG.md` are current.
 - [ ] Run `ruff format --check .` and `ruff check .` locally.
