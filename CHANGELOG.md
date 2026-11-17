@@ -1,31 +1,36 @@
 # Changelog
 
-All notable changes to Breezy Trace are documented in this file.
+All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the project is pre-1.0, minor versions may include breaking changes.
+The format is based on [Keep a Changelog](https://keepachangelog.com/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## Unreleased
+
+## [0.2.0] - 2026-11-18
 
 ### Added
-
 - One-line installers: `scripts/install.ps1` for Windows PowerShell 5.1 (no administrator rights) and `scripts/install.sh` for macOS and Linux. Both install uv when needed, install Breezy Trace as a uv tool, add the command to `PATH`, verify the install, and are safe to run again.
 - `breezy-trace update` upgrades Breezy Trace with the method it was installed with (uv tool, pipx, or plain pip), asks for confirmation unless `--yes` is given, and refuses editable development checkouts with an explanation.
 - `breezy-trace update --check` asks the PyPI JSON API once, with a 10-second timeout, whether a newer version exists. It sends no project data and never runs automatically.
 - On Windows, `breezy-trace update` finishes the upgrade in a visible console window after the current process exits, writes a log file, and prints the exact manual command if the helper cannot start.
 - `install-smoke` CI workflow runs both installers on Ubuntu, macOS, and Windows and checks `breezy-trace --version`.
+- CI matrix and package classifiers now include Python 3.14.
 
 ### Changed
-
 - README leads with the one-line installers and `uv tool install`, explains why plain `pip install` can leave the command "not found", and uses absolute GitHub links for community files so they work on the PyPI page.
 - README privacy section now documents the explicit, single PyPI version check.
-- CI matrix and package classifiers now include Python 3.14.
+
+---
+
+**Note:** People on 0.1.0 do not have the update command. Please upgrade once with
+`uv tool upgrade breezy-trace` (or rerun the installer, or `python -m pip install --upgrade breezy-trace`).
 
 ## [0.1.0] - 2026-11-12
 
 The first public release of Breezy Trace.
 
 ### Added
-
 - Local project registry backed by SQLite, with per-user data storage.
 - Textual terminal workspace with Resume, Metrics, Journal, Git, Activity, Code, and Settings views.
 - Notes, tasks, and decisions with search, completion, and Markdown handoff export.
@@ -41,14 +46,12 @@ The first public release of Breezy Trace.
 - Project creation, cloning, and opening from the terminal UI and CLI.
 
 ### Security
-
 - Git operations are read-only by design; Breezy Trace does not commit, pull, push, reset, stash, or discard changes.
 - No telemetry, analytics, or background network calls.
 - Agent integrations read metadata only and do not persist prompts, transcripts, or session titles.
 - Restore validates the SQLite integrity and Breezy Trace schema before replacing local data.
 
 ### Known limitations
-
 - Cursor, Windsurf, VS Code, and Zed integrations are not implemented.
 - Resolved call graphs and agent-to-file attribution are not implemented.
 - File activity requires an explicit scan and does not run a background watcher.
