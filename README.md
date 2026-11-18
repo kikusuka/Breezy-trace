@@ -241,6 +241,51 @@ python -m build
 python -m twine check dist/*
 ```
 
+## Standalone downloads
+
+Binary releases are available for Windows (x64 and ARM64), macOS (x64 and ARM64), and Linux (x64 and ARM64). **The programs are not code-signed yet**, so:
+
+- **Windows:** SmartScreen may warn when running the executable; click "More info" → "Run anyway"
+- **macOS:** Right-click (or Control-click) the app and choose **Open** the first time you run it
+
+### Checksum verification
+
+After downloading, verify the integrity of the release:
+
+```bash
+# Windows PowerShell
+Get-FileHash .\breezy-trace-0.2.0-windows-x64.zip
+
+# macOS / Linux
+sha256sum breezy-trace-0.2.0-windows-x64.zip
+```
+
+The SHA-256 checksums are published on the GitHub Release page alongside each asset.
+
+### Installing a standalone binary
+
+1. Download the appropriate archive for your platform from the GitHub Release page.
+2. Extract the archive (e.g., `unzip breezy-trace-0.2.0-windows-x64.zip` or `tar xzf breezy-trace-0.2.0-macos-arm64.tar.gz`).
+3. Move the `breezy-trace` (or `breezy-trace.exe`) binary to a folder on your `PATH`, or run it directly from the extracted folder.
+
+#### Adding to PATH (PowerShell)
+
+```powershell
+# Example: add to user PATH
+[Environment]::SetEnvironmentVariable("PATH", 
+    [Environment]::GetEnvironmentVariable("PATH", "User") + ";C:\Program Files\Breezy-trace", "User")
+```
+
+#### Adding to PATH (macOS / Linux)
+
+```bash
+export PATH="$PATH:/opt/breezy-trace"
+```
+
+### Updating
+
+To update a standalone install, download the new version archive and reinstall it over the top (or download and extract the new version). The `breezy-trace update` command will refuse to modify a standalone install — use the new version directly.
+
 For a reproducible cold/incremental indexing benchmark against a synthetic repository:
 
 ```bash
