@@ -9,7 +9,7 @@ def test_module_entrypoint_reports_version() -> None:
         text=True,
         check=True,
     )
-    assert result.stdout.strip() == "breezy-trace 0.1.0"
+    assert result.stdout.strip() == "breezy-trace 0.2.0"
 
 
 def test_cli_help_lists_backup_and_inspect() -> None:
