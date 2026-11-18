@@ -2,7 +2,6 @@
 
 import argparse
 import os
-import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -19,7 +18,7 @@ from breezy_trace.agents import AgentSessionStore
 from breezy_trace.backup import backup_database, restore_database
 from breezy_trace.call_graph import PythonCallGraph
 from breezy_trace.code_index import PythonCodeIndex
-from breezy_trace.config import data_dir, database_path
+from breezy_trace.config import database_path
 from breezy_trace.editor import NOTE_TEMPLATE, EditorError, edit_text, parse_note_text
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
@@ -50,6 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--no-intro", action="store_true", help="Skip the animated boot sequence.")
+    parser.add_argument(
+        "--self-test", dest="self_test", action="store_true", help=argparse.SUPPRESS
+    )
     commands = parser.add_subparsers(dest="command")
 
     register = commands.add_parser("register", help="Register a local Git project.")
@@ -273,6 +275,32 @@ def _print_resume(project, registry: ProjectRegistry) -> None:
 def main() -> None:
     parser = build_parser()
     args, remainder = parser.parse_known_args()
+
+    if args.self_test:
+        import os
+        import sys
+        import tempfile
+
+        data_dir = tempfile.mkdtemp(prefix="breezy-trace-self-test-")
+        os.environ["BREEZY_TRACE_DATA_DIR"] = data_dir
+        try:
+            # Self-test: verify the program can start with a temp data dir
+            # without crashing. This catches missing Textual files inside bundles.
+            old_argv = sys.argv
+            sys.argv = [sys.argv[0], "--version"]
+            # Run the CLI with the temp data dir set
+            from breezy_trace.cli import main as cli_main
+
+            cli_main()
+        except SystemExit:
+            pass
+        finally:
+            # Clean up the temp data dir
+            import shutil
+
+            shutil.rmtree(data_dir, ignore_errors=True)
+            sys.argv = old_argv
+        raise SystemExit(0)
 
     if args.command == "update":
         if remainder:
