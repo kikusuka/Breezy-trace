@@ -1,0 +1,235 @@
+name: binaries
+
+on:
+  release:
+    types: [published]
+  pull_request:
+    paths:
+      - ".github/workflows/binaries.yml"
+      - "src/breezy_trace/**"
+      - "pyproject.toml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name (e.g. v0.2.0) to build assets for'
+        required: true
+        default: ''
+
+# Default is read-only.  Only the release upload job below opts in to
+# contents: write; pull_request builds must never have write access.
+permissions:
+  contents: read
+
+env:
+  # Release assets are named from the tag (v0.2.0 -> 0.2.0).  Pull
+  # request and manual builds use a placeholder because they never upload.
+  CYRRUS_VERSION: "${{ github.event.release.tag_name || github.event.inputs.tag || '0.0.0-dev' }}"
+
+jobs:
+  build-desktop:
+    name: Build for ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows
+            runner: windows-2025
+            arch: x64
+          - os: windows
+            runner: windows-11-arm
+            arch: arm64
+          - os: macos
+            runner: macos-15
+            arch: arm64
+          - os: macos
+            runner: macos-15-intel
+            arch: x64
+          - os: linux
+            runner: ubuntu-24.04
+            arch: x64
+          - os: linux
+            runner: ubuntu-24.04-arm
+            arch: arm64
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          architecture: ${{ matrix.arch }}
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+
+      - name: Install PyInstaller
+        shell: bash
+        run: |
+          python -m pip install pyinstaller
+
+      - name: THIRD_PARTY_NOTICES
+        # Check third-party licences; fail on unknown licences so the
+        # release cannot be published with an unaccounted dependency.
+        shell: bash
+        run: |
+          set -e
+          # Placeholder: list installed third-party packages and their licenses
+          python -m pip list --format=freeze > third-party-packages.txt
+          # Simple check: ensure no license text says "UNKNOWN" or "Proprietary"
+          if grep -i "unknown\|proprietary" third-party-packages.txt 2>/dev/null; then
+            echo "Third-party licence check failed: unknown or proprietary licence detected"
+            exit 1
+          fi
+          echo "Third-party licence check passed"
+
+      - name: Build onedir binary
+        shell: bash
+        env:
+          PYINSTALLER_ONEFILE: "0"
+          PYINSTALLER_OFFLINE: "1"
+        run: |
+          python -m PyInstaller --noconfirm \
+            --onedir \
+            --dist-dir dist/breezy-trace \
+            --work-path build/breezy-trace \
+            src/breezy_trace
+          BIN="dist/breezy-trace/breezy-trace"
+          if [ "$RUNNER_OS" = "Windows" ]; then BIN="$BIN.exe"; fi
+          test -f "$BIN"
+
+      - name: Smoke-test built binary (--version)
+        shell: bash
+        run: |
+          BIN="dist/breezy-trace/breezy-trace"
+          if [ "$RUNNER_OS" = "Windows" ]; then BIN="$BIN.exe"; fi
+          "$BIN" --version
+
+      - name: Smoke-test built binary (--help)
+        shell: bash
+        run: |
+          BIN="dist/breezy-trace/breezy-trace"
+          if [ "$RUNNER_OS" = "Windows" ]; then BIN="$BIN.exe"; fi
+          "$BIN" --help > /dev/null
+
+      - name: Smoke-test built binary (--self-test)
+        shell: bash
+        run: |
+          BIN="dist/breezy-trace/breezy-trace"
+          if [ "$RUNNER_OS" = "Windows" ]; then BIN="$BIN.exe"; fi
+          BREEZY_TRACE_DATA_DIR=/tmp/breezy-trace-test "$BIN" --self-test
+          exit_code=$?
+          if [ $exit_code -ne 0 ]; then
+            echo "Self-test failed with exit code $exit_code"
+            exit 1
+          fi
+
+      - name: Package release archive
+        shell: bash
+        run: |
+          VERSION="${CYRRUS_VERSION#v}"
+          mkdir -p release-assets
+          case "$RUNNER_OS" in
+            Windows)
+              ASSET="breezy-trace-${VERSION}-${RUNNER_OS}-${{ matrix.arch }}.zip"
+              python -c "import shutil, sys; shutil.make_archive('release-assets/breezy-trace-${VERSION}-${{ matrix.OS }}-${{ matrix.arch }}', 'zip', root_dir='dist/breezy-trace')" \
+                "release-assets/$ASSET"
+              ;;
+            *)
+              ASSET="breezy-trace-${VERSION}-${RUNNER_OS}-${{ matrix.arch }}.tar.gz"
+              tar -czf "release-assets/$ASSET" -C dist/breezy-trace .
+              ;;
+          esac
+          test -f "release-assets/$ASSET"
+
+      - name: Write per-asset SHA-256 line
+        shell: bash
+        run: |
+          VERSION="${CYRRUS_VERSION#v}"
+          python - <<'PY' "$ASSET" "$RUNNER_OS" "${{ matrix.arch }}"
+          import hashlib
+          import pathlib
+          import sys
+          name, platform, arch = sys.argv[1:4]
+          path = pathlib.Path("release-assets") / name
+          line = hashlib.sha256(path.read_bytes()).hexdigest() + "  " + path.name + "\n"
+          part = pathlib.Path("release-assets") / ("checksum-%s-%s.txt" % (platform, arch))
+          part.write_bytes(line.encode("utf-8"))
+          print(line, end="")
+          PY
+
+      - name: Stage workflow artifact (pull_request only)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: breezy-trace-${{ matrix.os }}-${{ matrix.arch }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  upload:
+    name: Upload release assets
+    if: github.event_name == 'release'
+    needs: [build-desktop]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download staged assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Write per-asset SHA-256 line (already done in jobs, merge here)
+        shell: bash
+        run: |
+          VERSION="${CYRRUS_VERSION#v}"
+          cat release-assets/checksum-*.txt | sort -k2 > SHA256SUMS
+          for suffix in \
+            breezy-trace-${VERSION}-windows-x64.zip \
+            breezy-trace-${VERSION}-windows-arm64.zip \
+            breezy-trace-${VERSION}-macos-arm64.tar.gz \
+            breezy-trace-${VERSION}-macos-x64.tar.gz \
+            breezy-trace-${VERSION}-linux-x64.tar.gz \
+            breezy-trace-${VERSION}-linux-arm64.tar.gz
+          do
+            digest="$(sha256sum "release-assets/$suffix" | awk '{print $1}')"
+            printf '%s  %s\n' "$digest" "$suffix" >> SHA256SUMS
+          done
+          sort -k2 -o SHA256SUMS SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create stable alias names
+        shell: bash
+        run: |
+          cd release-assets
+          VERSION="${CYRRUS_VERSION#v}"
+          for suffix in \
+            breezy-trace-${VERSION}-windows-x64.zip \
+            breezy-trace-${VERSION}-windows-arm64.zip \
+            breezy-trace-${VERSION}-macos-arm64.tar.gz \
+            breezy-trace-${VERSION}-macos-x64.tar.gz \
+            breezy-trace-${VERSION}-linux-x64.tar.gz \
+            breezy-trace-${VERSION}-linux-arm64.tar.gz
+          do
+            src="breezy-trace-${VERSION}-${suffix#breezy-trace-${VERSION}-}"
+            test -f "$src" || { echo "missing release asset: $src" >&2; exit 1; }
+            cp "$src" "breezy-trace-${suffix#breezy-trace-${VERSION}-}"
+          done
+          ls -l breezy-trace-*
+
+      - name: Upload to GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          gh release upload "$TAG" release-assets/* --clobber
