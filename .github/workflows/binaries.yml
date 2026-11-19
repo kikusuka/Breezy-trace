@@ -43,11 +43,13 @@ jobs:
           - os: macos
             runner: macos-15-intel
             arch: x64
+          # Ubuntu 22.04 ships glibc 2.35. Building on the older image lets the
+          # Linux programs run on more distributions than an Ubuntu 24.04 build.
           - os: linux
-            runner: ubuntu-24.04
+            runner: ubuntu-22.04
             arch: x64
           - os: linux
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-22.04-arm
             arch: arm64
     steps:
       - name: Check out the requested tag
@@ -86,7 +88,8 @@ jobs:
         shell: bash
         run: |
           python -m pip install --upgrade pip
-          python -m pip install . pyinstaller
+          # Pinned to the exact PyInstaller version tested for these binaries.
+          python -m pip install . pyinstaller==6.22.3
 
       - name: Generate third-party notices
         shell: bash

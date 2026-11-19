@@ -248,6 +248,8 @@ Binary releases are available for Windows (x64 and ARM64), macOS (x64 and ARM64)
 - **Windows:** SmartScreen may warn when running the executable; click "More info" → "Run anyway"
 - **macOS:** Right-click (or Control-click) the app and choose **Open** the first time you run it
 
+Linux programs are built on Ubuntu 22.04 and need glibc 2.35 or newer.
+
 ### Checksum verification
 
 Download `SHA256SUMS.txt` from the same release, then compare its line for your
