@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Fixed
+- Breezy Trace no longer treats your home folder, any folder above it, or a filesystem or drive root as a project. Launching inside an unregistered repository now opens the lobby with a hint instead of a blocking registration prompt, and already-registered home-folder entries are flagged for removal.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added
