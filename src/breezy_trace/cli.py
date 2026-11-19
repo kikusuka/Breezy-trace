@@ -50,6 +50,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--no-intro", action="store_true", help="Skip the animated boot sequence.")
+    parser.add_argument(
+        "--self-test", dest="self_test", action="store_true", help=argparse.SUPPRESS
+    )
     commands = parser.add_subparsers(dest="command")
 
     register = commands.add_parser("register", help="Register a local Git project.")
@@ -270,9 +273,73 @@ def _print_resume(project, registry: ProjectRegistry) -> None:
         print("- No commits available.")
 
 
+def _run_self_test() -> int:
+    """Boot the real terminal UI headlessly and exercise its core screens.
+
+    This is used by the frozen binaries: it proves that Textual's data files,
+    the theme, the lobby and the help screen all made it into the bundle.
+    """
+
+    import asyncio
+    import shutil
+    import tempfile
+
+    temp_data_dir = Path(tempfile.mkdtemp(prefix="breezy-trace-self-test-"))
+    previous = os.environ.get("BREEZY_TRACE_DATA_DIR")
+    os.environ["BREEZY_TRACE_DATA_DIR"] = str(temp_data_dir)
+    try:
+        from breezy_trace.app import TraceApp
+        from breezy_trace.screens import HelpScreen
+
+        async def exercise() -> None:
+            app = TraceApp(intro=False)
+            async with app.run_test(size=(120, 40)) as pilot:
+                for selector in (
+                    "#topbar",
+                    "#tabs",
+                    "#workspace",
+                    "#project-list",
+                    "#project-table",
+                    "#content-panel",
+                    "#content",
+                ):
+                    app.query_one(selector)
+                await pilot.press("question_mark")
+                await pilot.pause()
+                if not isinstance(app.screen, HelpScreen):
+                    raise RuntimeError("the help screen did not open")
+                app.screen.query_one("#help-dialog")
+                app.screen.query_one("#help-body")
+                await pilot.press("escape")
+                await pilot.pause()
+                if isinstance(app.screen, HelpScreen):
+                    raise RuntimeError("the help screen did not close")
+                await pilot.press("escape")
+                await pilot.pause()
+                if not app.is_running:
+                    raise RuntimeError("the application stopped unexpectedly")
+
+        asyncio.run(exercise())
+    except Exception as error:  # noqa: BLE001 - report every self-test failure
+        print(f"self-test failed: {error}", file=sys.stderr)
+        return 1
+    finally:
+        if previous is None:
+            os.environ.pop("BREEZY_TRACE_DATA_DIR", None)
+        else:
+            os.environ["BREEZY_TRACE_DATA_DIR"] = previous
+        shutil.rmtree(temp_data_dir, ignore_errors=True)
+
+    print("self-test OK")
+    return 0
+
+
 def main() -> None:
     parser = build_parser()
     args, remainder = parser.parse_known_args()
+
+    if args.self_test:
+        raise SystemExit(_run_self_test())
 
     if args.command == "update":
         if remainder:

@@ -48,6 +48,7 @@ class InstallMethod(StrEnum):
     PIPX = "pipx"
     PIP = "pip"
     EDITABLE = "editable"
+    STANDALONE = "standalone"
 
 
 def _normalized_path(value: str | Path) -> str:
@@ -124,6 +125,12 @@ def detect_install_method(module_path: Path | None = None) -> InstallMethod:
     """
 
     module = module_path or Path(__file__).resolve()
+    # Check for PyInstaller/frozen binary first — takes priority over
+    # any installed distribution so that frozen installs are always
+    # recognised as standalone.
+    if getattr(sys, "_MEIPASS", None) is not None:
+        return InstallMethod.STANDALONE
+
     if _is_source_checkout(module):
         return InstallMethod.EDITABLE
 
@@ -149,6 +156,7 @@ def describe_install_method(method: InstallMethod) -> str:
         InstallMethod.PIPX: "pipx",
         InstallMethod.PIP: "plain pip",
         InstallMethod.EDITABLE: "editable development checkout",
+        InstallMethod.STANDALONE: "standalone (frozen) install",
     }
     return labels[method]
 
@@ -361,6 +369,15 @@ def run_update(check: bool, assume_yes: bool) -> int:
 
     if method is InstallMethod.EDITABLE:
         print(_EDITABLE_MESSAGE, file=sys.stderr)
+        return 1
+
+    if method is InstallMethod.STANDALONE:
+        print(
+            "Breezy Trace is installed as a standalone (frozen) application."
+            " Self-update is not supported. Download the new version from the"
+            " website or re-run the installer to get the latest release.",
+            file=sys.stderr,
+        )
         return 1
 
     try:
