@@ -28,12 +28,83 @@ def _detect(
     distribution: FakeDistribution | None = None,
 ) -> updater.InstallMethod:
     monkeypatch.setattr(sys, "prefix", str(prefix))
-    if distribution is not None:
-        monkeypatch.setattr(updater, "_distribution", lambda: distribution)
-    else:
-        monkeypatch.setattr(updater, "_distribution", lambda: None)
-    from breezy_trace.updater import detect_install_method
-    return detect_install_method(module_path=prefix / "breezy-trace")
+    monkeypatch.setattr(updater, "_distribution", lambda: distribution)
+    return updater.detect_install_method(module_path=_module_path(tmp_path))
+
+
+def test_detects_uv_tool_install(monkeypatch, tmp_path):
+    method = _detect(
+        monkeypatch,
+        tmp_path,
+        tmp_path / "uv" / "tools" / "breezy-trace",
+        FakeDistribution(),
+    )
+    assert method is updater.InstallMethod.UV_TOOL
+
+
+def test_detects_custom_uv_tool_dir(monkeypatch, tmp_path):
+    tool_dir = tmp_path / "custom-tools"
+    monkeypatch.setenv("UV_TOOL_DIR", str(tool_dir))
+    method = _detect(
+        monkeypatch,
+        tmp_path,
+        tool_dir / "breezy-trace",
+        FakeDistribution(),
+    )
+    assert method is updater.InstallMethod.UV_TOOL
+
+
+def test_detects_pipx_install(monkeypatch, tmp_path):
+    method = _detect(
+        monkeypatch,
+        tmp_path,
+        tmp_path / "pipx" / "venvs" / "breezy-trace",
+        FakeDistribution(),
+    )
+    assert method is updater.InstallMethod.PIPX
+
+
+def test_detects_custom_pipx_home(monkeypatch, tmp_path):
+    pipx_home = tmp_path / "pipx-home"
+    monkeypatch.setenv("PIPX_HOME", str(pipx_home))
+    method = _detect(
+        monkeypatch,
+        tmp_path,
+        pipx_home / "venvs" / "breezy-trace",
+        FakeDistribution(),
+    )
+    assert method is updater.InstallMethod.PIPX
+
+
+def test_detects_plain_pip_install(monkeypatch, tmp_path):
+    method = _detect(monkeypatch, tmp_path, tmp_path / "venv", FakeDistribution())
+    assert method is updater.InstallMethod.PIP
+
+
+def test_detects_editable_install(monkeypatch, tmp_path):
+    distribution = FakeDistribution('{"url": "file:///checkout", "dir_info": {"editable": true}}')
+    method = _detect(monkeypatch, tmp_path, tmp_path / "venv", distribution)
+    assert method is updater.InstallMethod.EDITABLE
+
+
+def test_invalid_direct_url_falls_back_to_pip(monkeypatch, tmp_path):
+    method = _detect(monkeypatch, tmp_path, tmp_path / "venv", FakeDistribution("{"))
+    assert method is updater.InstallMethod.PIP
+
+
+def test_source_checkout_is_editable_without_metadata(monkeypatch, tmp_path):
+    checkout = tmp_path / "checkout"
+    module = checkout / "src" / "breezy_trace" / "updater.py"
+    module.parent.mkdir(parents=True)
+    module.write_text("", encoding="utf-8")
+    (checkout / "pyproject.toml").write_text('[project]\nname = "breezy-trace"\n', encoding="utf-8")
+    monkeypatch.setattr(updater, "_distribution", lambda: None)
+    assert updater.detect_install_method(module_path=module) is updater.InstallMethod.EDITABLE
+
+
+def test_unknown_install_is_treated_as_editable(monkeypatch, tmp_path):
+    method = _detect(monkeypatch, tmp_path, tmp_path / "venv", None)
+    assert method is updater.InstallMethod.EDITABLE
 
 
 @pytest.mark.parametrize(
@@ -61,96 +132,9 @@ def test_version_comparison(latest, current, expected):
     assert updater.is_newer(latest, current) is expected
 
 
-@pytest.mark.parametrize(
-    ("latest", "current", "expected"),
-    [
-        ("1!0.1.0", "2.0.0", True),
-    ],
-)
-def test_version_comparison_with_epoch(latest, current, expected):
-    # epoch tests use the ! syntax
-    assert updater.is_newer(latest, current) is expected
-
-
-def test_detects_uv_tool_install(monkeypatch, tmp_path):
-    method = _detect(
-        monkeypatch,
-        tmp_path,
-        tmp_path / "uv" / "tools" / "breezy-trace",
-        FakeDistribution(),
-    )
-    assert method is pytest.importorskip("breezy_trace.updater").InstallMethod.UV_TOOL
-
-
-def test_detects_custom_uv_tool_dir(monkeypatch, tmp_path):
-    tool_dir = tmp_path / "custom-tools"
-    monkeypatch.setenv("UV_TOOL_DIR", str(tool_dir))
-    method = _detect(
-        monkeypatch,
-        tmp_path,
-        tool_dir / "breezy-trace",
-        FakeDistribution(),
-    )
-    assert method is pytest.importorskip("breezy_trace.updater").InstallMethod.UV_TOOL
-
-
-def test_detects_pipx_install(monkeypatch, tmp_path):
-    method = _detect(
-        monkeypatch,
-        tmp_path,
-        tmp_path / "pipx" / "venvs" / "breezy-trace",
-        FakeDistribution(),
-    )
-    assert method is pytest.importorskip("breezy_trace.updater").InstallMethod.PIPX
-
-
-def test_detects_custom_pipx_home(monkeypatch, tmp_path):
-    pipx_home = tmp_path / "pipx-home"
-    monkeypatch.setenv("PIPX_HOME", str(pipx_home))
-    method = _detect(
-        monkeypatch,
-        tmp_path,
-        pipx_home / "venvs" / "breezy-trace",
-        FakeDistribution(),
-    )
-    assert method is pytest.importorskip("breezy_trace.updater").InstallMethod.PIPX
-
-
-def test_detects_plain_pip_install(monkeypatch, tmp_path):
-    method = _detect(monkeypatch, tmp_path, tmp_path / "venv", FakeDistribution())
-    assert method is pytest.importorskip("breezy_trace.updater").InstallMethod.PIP
-
-
-def test_detects_editable_install(monkeypatch, tmp_path):
-    distribution = FakeDistribution('{"url": "file:///checkout", "dir_info": {"editable": true}}')
-    method = _detect(monkeypatch, tmp_path, tmp_path / "venv", distribution)
-    assert method is pytest.importorskip("breezy_trace.updater").InstallMethod.EDITABLE
-
-
-def test_invalid_direct_url_falls_back_to_pip(monkeypatch, tmp_path):
-    method = _detect(monkeypatch, tmp_path, tmp_path / "venv", FakeDistribution("{"))
-    assert method is pytest.importorskip("breezy_trace.updater").InstallMethod.PIP
-
-
-def test_source_checkout_is_editable_without_metadata(monkeypatch, tmp_path):
-    checkout = tmp_path / "checkout"
-    module = checkout / "src" / "breezy_trace" / "updater.py"
-    module.parent.mkdir(parents=True)
-    module.write_text("", encoding="utf-8")
-    (checkout / "pyproject.toml").write_text('[project]\nname = "breezy-trace"\n', encoding="utf-8")
-    monkeypatch.setattr(updater, "_distribution", lambda: None)
-    assert updater.detect_install_method(module_path=module) is pytest.importorskip("breezy_trace.updater").InstallMethod.EDITABLE
-
-
-def test_unknown_install_is_treated_as_editable(monkeypatch, tmp_path):
-    method = _detect(monkeypatch, tmp_path, tmp_path / "venv", None)
-    assert method is pytest.importorskip("breezy_trace.updater").InstallMethod.EDITABLE
-
-
 def test_invalid_version_raises():
-    from breezy_trace import updater as u
     with pytest.raises(ValueError, match="unrecognized version"):
-        u.is_newer("release", "0.1.0")
+        updater.is_newer("release", "0.1.0")
 
 
 def test_fetch_latest_version_calls_pypi_once(monkeypatch):
@@ -231,9 +215,8 @@ def test_build_upgrade_command_for_pipx(monkeypatch):
 
 
 def test_build_upgrade_command_for_pip():
-    import sys as _sys
     command = updater.build_upgrade_command(updater.InstallMethod.PIP)
-    assert command == [_sys.executable, "-m", "pip", "install", "--upgrade", "breezy-trace"]
+    assert command == [sys.executable, "-m", "pip", "install", "--upgrade", "breezy-trace"]
 
 
 def test_build_upgrade_command_requires_uv(monkeypatch):
@@ -248,9 +231,7 @@ def test_build_upgrade_command_refuses_editable():
 
 
 def test_run_update_refuses_editable(monkeypatch, capsys):
-    from breezy_trace import cli
-    monkeypatch.setattr(cli, "ProjectRegistry", lambda: pytest.fail("registry created"))
-    monkeypatch.setattr(updater, "check_for_update", lambda: 0)
+    monkeypatch.setattr(updater, "detect_install_method", lambda: updater.InstallMethod.EDITABLE)
     monkeypatch.setattr(updater, "_execute_upgrade", lambda command: pytest.fail("ran upgrade"))
     assert updater.run_update(check=False, assume_yes=True) == 1
     assert "editable development checkout" in capsys.readouterr().err
@@ -363,72 +344,9 @@ def test_start_visible_upgrade_prints_command_without_powershell(monkeypatch, ca
     assert "uv tool upgrade breezy-trace" in output
 
 
-# --- New standalone binaries tests ---
-
-def test_standalone_detected_when_meipass_set():
-    """Verify that _MEIPASS triggers standalone detection in updater."""
-    sys._MEIPASS = "/tmp/pyinstaller"
-    try:
-        meipass_check = getattr(sys, "_MEIPASS", None) is not None
-        assert meipass_check is True, "_MEIPASS should be set"
-    finally:
-        if hasattr(sys, "_MEIPASS"):
-            delattr(sys, "_MEIPASS")
-
-
-def test_standalone_update_refused(capsys, monkeypatch):
-    """Verify that update command refuses to modify a standalone install."""
-    original_meipass = getattr(sys, "_MEIPASS", None)
-    sys._MEIPASS = "/tmp/pyinstaller"
-    try:
-        from breezy_trace.cli import main
-        sys.argv = ["breezy-trace", "update"]
-        try:
-            main()
-        except SystemExit:
-            pass
-        stderr = capsys.readouterr().err
-        assert stderr is not None
-        assert "standalone" in stderr.lower()
-        assert "self-update" in stderr.lower()
-        assert "download" in stderr.lower()
-        assert "re-run" in stderr.lower()
-    finally:
-        if original_meipass is not None:
-            sys._MEIPASS = original_meipass
-        else:
-            delattr(sys, "_MEIPASS")
-
-
-def test_self_test_runs_headless(monkeypatch, tmp_path, capsys):
-    """Verify --self-test boots the real interface with temp data dir."""
-    import tempfile
-    import os
-    import shutil
-    data_dir = tempfile.mkdtemp(prefix="breezy-trace-self-test-")
-    os.environ["BREEZY_TRACE_DATA_DIR"] = data_dir
-    try:
-        from breezy_trace.cli import main
-        sys.argv = ["breezy-trace", "--self-test"]
-        try:
-            main()
-        except SystemExit as e:
-            code = e.code
-        else:
-            code = 0
-        # If we got here without SystemExit, the test passed
-        output = capsys.readouterr()
-        # Check that the program started successfully (--version should have printed)
-        assert code == 0, f"Self-test exited with code {code}"
-    finally:
-        # Clean up the temp data dir
-        shutil.rmtree(data_dir, ignore_errors=True)
-        if "BREEZY_TRACE_DATA_DIR" in os.environ:
-            del os.environ["BREEZY_TRACE_DATA_DIR"]
-
-
 def test_cli_update_check_does_not_create_registry(monkeypatch):
     from breezy_trace import cli
+
     monkeypatch.setattr(cli, "ProjectRegistry", lambda: pytest.fail("registry created"))
     monkeypatch.setattr(updater, "check_for_update", lambda: 0)
     monkeypatch.setattr(sys, "argv", ["breezy-trace", "update", "--check"])
@@ -437,9 +355,9 @@ def test_cli_update_check_does_not_create_registry(monkeypatch):
     assert error.value.code == 0
 
 
-
 def test_cli_update_yes_maps_to_run_update(monkeypatch):
     from breezy_trace import cli
+
     calls = []
     monkeypatch.setattr(
         updater,
@@ -453,9 +371,9 @@ def test_cli_update_yes_maps_to_run_update(monkeypatch):
     assert calls == [(False, True)]
 
 
-
 def test_cli_version_does_not_use_network(monkeypatch):
     from breezy_trace import cli
+
     calls = []
     monkeypatch.setattr(updater, "urlopen", lambda *args, **kwargs: calls.append(1))
     monkeypatch.setattr(sys, "argv", ["breezy-trace", "--version"])

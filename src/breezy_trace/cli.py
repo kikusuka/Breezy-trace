@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from breezy_trace.agents import AgentSessionStore
 from breezy_trace.backup import backup_database, restore_database
 from breezy_trace.call_graph import PythonCallGraph
 from breezy_trace.code_index import PythonCodeIndex
-from breezy_trace.config import database_path
+from breezy_trace.config import data_dir, database_path
 from breezy_trace.editor import NOTE_TEMPLATE, EditorError, edit_text, parse_note_text
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
@@ -272,35 +273,73 @@ def _print_resume(project, registry: ProjectRegistry) -> None:
         print("- No commits available.")
 
 
+def _run_self_test() -> int:
+    """Boot the real terminal UI headlessly and exercise its core screens.
+
+    This is used by the frozen binaries: it proves that Textual's data files,
+    the theme, the lobby and the help screen all made it into the bundle.
+    """
+
+    import asyncio
+    import shutil
+    import tempfile
+
+    temp_data_dir = Path(tempfile.mkdtemp(prefix="breezy-trace-self-test-"))
+    previous = os.environ.get("BREEZY_TRACE_DATA_DIR")
+    os.environ["BREEZY_TRACE_DATA_DIR"] = str(temp_data_dir)
+    try:
+        from breezy_trace.app import TraceApp
+        from breezy_trace.screens import HelpScreen
+
+        async def exercise() -> None:
+            app = TraceApp(intro=False)
+            async with app.run_test(size=(120, 40)) as pilot:
+                for selector in (
+                    "#topbar",
+                    "#tabs",
+                    "#workspace",
+                    "#project-list",
+                    "#project-table",
+                    "#content-panel",
+                    "#content",
+                ):
+                    app.query_one(selector)
+                await pilot.press("question_mark")
+                await pilot.pause()
+                if not isinstance(app.screen, HelpScreen):
+                    raise RuntimeError("the help screen did not open")
+                app.screen.query_one("#help-dialog")
+                app.screen.query_one("#help-body")
+                await pilot.press("escape")
+                await pilot.pause()
+                if isinstance(app.screen, HelpScreen):
+                    raise RuntimeError("the help screen did not close")
+                await pilot.press("escape")
+                await pilot.pause()
+                if not app.is_running:
+                    raise RuntimeError("the application stopped unexpectedly")
+
+        asyncio.run(exercise())
+    except Exception as error:  # noqa: BLE001 - report every self-test failure
+        print(f"self-test failed: {error}", file=sys.stderr)
+        return 1
+    finally:
+        if previous is None:
+            os.environ.pop("BREEZY_TRACE_DATA_DIR", None)
+        else:
+            os.environ["BREEZY_TRACE_DATA_DIR"] = previous
+        shutil.rmtree(temp_data_dir, ignore_errors=True)
+
+    print("self-test OK")
+    return 0
+
+
 def main() -> None:
     parser = build_parser()
     args, remainder = parser.parse_known_args()
 
     if args.self_test:
-        import os
-        import sys
-        import tempfile
-
-        data_dir = tempfile.mkdtemp(prefix="breezy-trace-self-test-")
-        os.environ["BREEZY_TRACE_DATA_DIR"] = data_dir
-        try:
-            # Self-test: verify the program can start with a temp data dir
-            # without crashing. This catches missing Textual files inside bundles.
-            old_argv = sys.argv
-            sys.argv = [sys.argv[0], "--version"]
-            # Run the CLI with the temp data dir set
-            from breezy_trace.cli import main as cli_main
-
-            cli_main()
-        except SystemExit:
-            pass
-        finally:
-            # Clean up the temp data dir
-            import shutil
-
-            shutil.rmtree(data_dir, ignore_errors=True)
-            sys.argv = old_argv
-        raise SystemExit(0)
+        raise SystemExit(_run_self_test())
 
     if args.command == "update":
         if remainder:
