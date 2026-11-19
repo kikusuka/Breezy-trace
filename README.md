@@ -250,30 +250,45 @@ Binary releases are available for Windows (x64 and ARM64), macOS (x64 and ARM64)
 
 ### Checksum verification
 
-After downloading, verify the integrity of the release:
+Download `SHA256SUMS.txt` from the same release, then compare its line for your
+archive with the hash of the file you downloaded (use the archive name for your
+platform and version):
 
-```bash
+```powershell
 # Windows PowerShell
-Get-FileHash .\breezy-trace-0.2.0-windows-x64.zip
-
-# macOS / Linux
-sha256sum breezy-trace-0.2.0-windows-x64.zip
+Get-FileHash .\breezy-trace-0.2.0-windows-x64.zip -Algorithm SHA256
 ```
 
-The SHA-256 checksums are published on the GitHub Release page alongside each asset.
+```bash
+# macOS
+shasum -a 256 breezy-trace-0.2.0-macos-arm64.tar.gz
+
+# Linux
+sha256sum breezy-trace-0.2.0-linux-x64.tar.gz
+```
+
+The SHA-256 checksums are published in `SHA256SUMS.txt` on the GitHub Release
+page alongside each asset.
 
 ### Installing a standalone binary
 
-1. Download the appropriate archive for your platform from the GitHub Release page.
-2. Extract the archive (e.g., `unzip breezy-trace-0.2.0-windows-x64.zip` or `tar xzf breezy-trace-0.2.0-macos-arm64.tar.gz`).
-3. Move the `breezy-trace` (or `breezy-trace.exe`) binary to a folder on your `PATH`, or run it directly from the extracted folder.
+1. Download the appropriate archive for your platform from the GitHub Release
+   page.
+2. Extract the archive (e.g., `Expand-Archive breezy-trace-0.2.0-windows-x64.zip`
+   or `tar xzf breezy-trace-0.2.0-macos-arm64.tar.gz`). It contains a
+   `breezy-trace` folder with the program, plus `LICENSE`,
+   `THIRD_PARTY_NOTICES.txt`, and `README-STANDALONE.txt`.
+3. Move the extracted `breezy-trace` folder to a permanent location, then add
+   that folder to your `PATH` (or run `breezy-trace` from inside it).
 
 #### Adding to PATH (PowerShell)
 
 ```powershell
-# Example: add to user PATH
-[Environment]::SetEnvironmentVariable("PATH", 
-    [Environment]::GetEnvironmentVariable("PATH", "User") + ";C:\Program Files\Breezy-trace", "User")
+# Example: add C:\Tools\breezy-trace to the user PATH
+[Environment]::SetEnvironmentVariable(
+    "PATH",
+    [Environment]::GetEnvironmentVariable("PATH", "User") + ";C:\Tools\breezy-trace",
+    "User")
 ```
 
 #### Adding to PATH (macOS / Linux)
