@@ -5,7 +5,7 @@ from pathlib import Path
 from textual.widgets import Input
 
 from breezy_trace import theme
-from breezy_trace.app import TraceApp
+from breezy_trace.app import ProjectPicker, TraceApp
 from breezy_trace.intro import IntroScreen
 from breezy_trace.journal import JournalStore
 from breezy_trace.screens import ChoiceScreen, FormScreen, HelpScreen
@@ -911,5 +911,46 @@ def test_adding_a_plain_folder_offers_to_create_a_repository(tmp_path: Path, mon
             await settle(pilot)
             assert (plain / ".git").is_dir() and app.active_project.name == "plain-folder"
             assert (plain / "notes.txt").read_text(encoding="utf-8") == "mine"
+
+    asyncio.run(exercise())
+
+
+def test_lobby_warns_about_a_registered_home_folder(tmp_path: Path, monkeypatch) -> None:
+    import breezy_trace.registry as registry_module
+
+    _isolate(tmp_path, monkeypatch)
+    stray = _init_repo(tmp_path / "stray")
+    registry_module.ProjectRegistry().register(stray)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: stray))
+
+    async def exercise() -> None:
+        async with TraceApp(intro=False).run_test(size=(120, 36)) as pilot:
+            await settle(pilot)
+            app = pilot.app
+            assert app.query_one("#project-table").row_count == 1
+            text = app._home().plain
+            assert "stray is your home folder, not a project." in text
+            assert "Highlight it and press Delete" in text
+            assert "your files are not touched." in text
+
+    asyncio.run(exercise())
+
+
+def test_lobby_hint_prefills_the_open_dialog(tmp_path: Path, monkeypatch) -> None:
+    _isolate(tmp_path, monkeypatch)
+    repo = _init_repo(tmp_path / "suggested")
+
+    async def exercise() -> None:
+        async with TraceApp(intro=False, unregistered_root=repo).run_test(size=(120, 36)) as pilot:
+            await settle(pilot)
+            text = pilot.app._home().plain
+            assert "This folder is a Git repository that is not in Breezy Trace yet." in text
+            assert "Press o to add it." in text
+            pilot.app.action_open_project()
+            await pilot.pause()
+            assert isinstance(pilot.app.screen, ProjectPicker)
+            assert pilot.app.screen.query_one("#folder-path", Input).value == str(repo)
+            pilot.app.screen.dismiss(None)
+            await pilot.pause()
 
     asyncio.run(exercise())

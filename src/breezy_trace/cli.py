@@ -24,19 +24,28 @@ from breezy_trace.editor import NOTE_TEMPLATE, EditorError, edit_text, parse_not
 from breezy_trace.git import branch_intelligence, inspect_details, inspect_status, recent_commits
 from breezy_trace.journal import JournalStore
 from breezy_trace.metrics import find_todos
+from breezy_trace.models import Project
 from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS, TreeSitterCodeIndex
 from breezy_trace.prompt import SHELLS, SNIPPETS, prompt_segment
-from breezy_trace.registry import ProjectError, ProjectRegistry
+from breezy_trace.registry import ProjectError, ProjectRegistry, project_root_reason
 from breezy_trace.standup import collect_standup, format_standup
 from breezy_trace.visuals import basic_glyphs
 
 
-def _run_tui(args: argparse.Namespace, project=None) -> None:
+def _run_tui(
+    args: argparse.Namespace,
+    project: Project | None = None,
+    unregistered_root: Path | None = None,
+) -> None:
     """Import the terminal UI only when it is needed, so shell commands and the prompt
     segment start fast."""
     from breezy_trace.app import TraceApp
 
-    TraceApp(project=project, intro=_intro_enabled(args)).run()
+    TraceApp(
+        project=project,
+        intro=_intro_enabled(args),
+        unregistered_root=unregistered_root,
+    ).run()
 
 
 def _intro_enabled(args: argparse.Namespace) -> bool:
@@ -224,6 +233,26 @@ def _current_project(parser: argparse.ArgumentParser, registry: ProjectRegistry)
             "The current directory is not a registered Git project. Run: breezy-trace register ."
         )
     return project
+
+
+def _launch_state(registry: ProjectRegistry) -> tuple[Project | None, Path | None]:
+    """What a bare launch should show: the current project, or one lobby hint.
+
+    A folder inside an unregistered repository gets a hint only when that
+    repository root is allowed to be a project. Home folders, their parents and
+    filesystem roots never qualify, so a stray repository cannot capture them.
+    """
+    current = Path.cwd()
+    project = registry.find_by_path(current)
+    if project is not None:
+        return project, None
+    try:
+        root = registry.resolve_git_root(current)
+    except ProjectError:
+        return None, None
+    if project_root_reason(root) is not None:
+        return None, None
+    return None, root
 
 
 def _print_resume(project, registry: ProjectRegistry) -> None:
@@ -649,7 +678,12 @@ def main() -> None:
             print("No projects registered. Run: breezy-trace register <path>")
             return
         for project in projects:
-            print(f"{project.name}\n  {project.path}")
+            warning = (
+                "  (home folder, not a real project)"
+                if project_root_reason(Path(project.path)) is not None
+                else ""
+            )
+            print(f"{project.name}{warning}\n  {project.path}")
         return
 
     if args.command in {"status", "resume", "inspect", "branches", "git"}:
@@ -707,51 +741,36 @@ def main() -> None:
         if args.command is None and len(remainder) == 1:
             target = Path(remainder[0]).expanduser()
             project = registry.find_by_path(target)
+            unregistered_root = None
             if project is None:
                 try:
                     root = registry.resolve_git_root(target)
                 except ProjectError as error:
                     parser.error(str(error))
-                answer = (
-                    input(f"'{root}' is not registered. Register and open it? [y/N] ")
-                    .strip()
-                    .lower()
-                )
-                if answer not in {"y", "yes"}:
-                    _run_tui(args)
-                    return
-                try:
-                    project = registry.register(root)
-                except ProjectError as error:
-                    parser.error(str(error))
-            registry.mark_opened(project.id)
-            _run_tui(args, project)
+                reason = project_root_reason(root)
+                if reason is not None:
+                    parser.error(
+                        f"This is {reason}, not a project. "
+                        "Register the project folder inside it instead."
+                    )
+                unregistered_root = root
+            else:
+                registry.mark_opened(project.id)
+            _run_tui(args, project, unregistered_root)
             return
         parser.error(f"Unrecognized arguments: {' '.join(remainder)}")
 
     project = None
+    unregistered_root = None
     if args.command is None:
-        current = Path.cwd()
-        project = registry.find_by_path(current)
-        if project is None:
-            try:
-                root = registry.resolve_git_root(current)
-            except ProjectError:
-                root = None
-            if root is not None:
-                answer = (
-                    input(f"'{root}' is not registered. Register and open it? [y/N] ")
-                    .strip()
-                    .lower()
-                )
-                if answer in {"y", "yes"}:
-                    try:
-                        project = registry.register(root)
-                    except ProjectError as error:
-                        parser.error(str(error))
-    if project:
-        registry.mark_opened(project.id)
-    _run_tui(args, project)
+        project, unregistered_root = _launch_state(registry)
+        if project is not None:
+            registry.mark_opened(project.id)
+    elif args.command == "home":
+        active, unregistered_root = _launch_state(registry)
+        if active is not None:
+            unregistered_root = None
+    _run_tui(args, project, unregistered_root)
 
 
 if __name__ == "__main__":
