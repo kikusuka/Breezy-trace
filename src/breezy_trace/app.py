@@ -61,7 +61,7 @@ from breezy_trace.metrics import (
 )
 from breezy_trace.models import GitStatus, Project
 from breezy_trace.polyglot_index import LANGUAGE_EXTENSIONS
-from breezy_trace.registry import ProjectError, ProjectRegistry
+from breezy_trace.registry import ProjectError, ProjectRegistry, project_root_reason
 from breezy_trace.remotes import list_remotes, primary_remote
 from breezy_trace.runners import detect_commands, resolve_executable
 from breezy_trace.screens import ChoiceScreen, ConfirmScreen, FormScreen, HelpScreen
@@ -298,17 +298,20 @@ class ProjectPicker(ModalScreen[Path | None]):
     """
     BINDINGS: ClassVar[list[Binding]] = [Binding("escape", "cancel", "Cancel")]
 
+    def __init__(self, initial_path: Path | None = None) -> None:
+        super().__init__()
+        self.initial_path = initial_path
+
     def compose(self) -> ComposeResult:
+        start = self.initial_path or Path.home()
         with Vertical(id="picker-dialog"):
             yield Static("OPEN A PROJECT FOLDER", id="picker-title")
             yield Static(
                 "Tip: drag a folder from Explorer into the box below, or paste its path.",
                 id="picker-hint",
             )
-            yield Input(
-                value=str(Path.home()), placeholder="Enter any folder path", id="folder-path"
-            )
-            yield DirectoryTree(str(Path.home()), id="directory-tree")
+            yield Input(value=str(start), placeholder="Enter any folder path", id="folder-path")
+            yield DirectoryTree(str(start), id="directory-tree")
             with Horizontal(id="picker-actions"):
                 yield Button("Open path", id="open-path", variant="primary")
                 yield Button("Use selected folder", id="open-selected")
@@ -386,12 +389,17 @@ class TraceApp(App[None]):
     ]
 
     def __init__(
-        self, project: Project | None = None, intro: bool = True, theme: str | None = None
+        self,
+        project: Project | None = None,
+        intro: bool = True,
+        theme: str | None = None,
+        unregistered_root: Path | None = None,
     ) -> None:
         super().__init__()
         apply_theme(theme or load_settings().get("theme", DEFAULT_THEME))
         self.registry = ProjectRegistry()
         self.active_project = project
+        self.unregistered_root = unregistered_root
         self.current_view = "home"
         self.intro = intro
         self._main: Screen | None = None
@@ -674,6 +682,7 @@ class TraceApp(App[None]):
                 return
             self.notify(str(error), title="Could not open project", severity="error")
             return
+        self.unregistered_root = None
         self.active_project = project
         self._since[project.id] = project.last_opened_at
         self.registry.mark_opened(project.id)
@@ -762,7 +771,7 @@ class TraceApp(App[None]):
     def action_open_project(self) -> None:
         if self.screen is not self._main:
             return
-        self.push_screen(ProjectPicker(), self._handle_project_pick)
+        self.push_screen(ProjectPicker(self.unregistered_root), self._handle_project_pick)
 
     def action_show_help(self) -> None:
         if isinstance(self.screen, HelpScreen):
@@ -1017,6 +1026,7 @@ class TraceApp(App[None]):
 
     def _adopt_project(self, project: Project) -> None:
         """Show a just-registered project in the list and open it."""
+        self.unregistered_root = None
         self._boot_ids.append(project.id)
         self._add_project_row(project)
         self._start_state_load([project])
@@ -1614,6 +1624,11 @@ class TraceApp(App[None]):
 
     def _home(self) -> Text:
         projects = self.registry.list_projects()
+        warnings = [
+            (project, reason)
+            for project in projects
+            if (reason := project_root_reason(Path(project.path))) is not None
+        ]
         out = Text()
         if not projects:
             out.append("Welcome to Breezy Trace\n", style=f"bold {PALETTE['text']}")
@@ -1622,6 +1637,12 @@ class TraceApp(App[None]):
                 "kept per project and stored only on this machine.\n",
                 style=PALETTE["muted"],
             )
+            if self.unregistered_root is not None:
+                out.append(
+                    "This folder is a Git repository that is not in Breezy Trace yet. "
+                    "Press o to add it.\n",
+                    style=PALETTE["dirty"],
+                )
             _heading(out, "Get started")
             for key, meaning in (
                 ("o", "add a repository that already exists on this machine"),
@@ -1649,6 +1670,18 @@ class TraceApp(App[None]):
         else:
             out.append("  ·  all clean", style=PALETTE["clean"])
         out.append("\n")
+        if self.unregistered_root is not None:
+            out.append(
+                "This folder is a Git repository that is not in Breezy Trace yet. "
+                "Press o to add it.\n",
+                style=PALETTE["dirty"],
+            )
+        for project, reason in warnings:
+            out.append(
+                f"{project.name} is {reason}, not a project. Highlight it and press Delete "
+                "to remove it from Breezy Trace; your files are not touched.\n",
+                style=f"bold {PALETTE['dirty']}",
+            )
 
         names = {item.id: item.name for item in projects}
         overall = lobby_metrics(
