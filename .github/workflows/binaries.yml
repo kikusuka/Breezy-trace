@@ -95,6 +95,12 @@ jobs:
         shell: bash
         run: python packaging/make_notices.py --output THIRD_PARTY_NOTICES.txt
 
+      - name: Show notices summary
+        shell: bash
+        run: |
+          echo "Python runtime licence source was printed above by make_notices.py"
+          echo "THIRD_PARTY_NOTICES.txt: $(wc -c < THIRD_PARTY_NOTICES.txt) bytes"
+
       - name: Build standalone binary
         shell: bash
         run: |

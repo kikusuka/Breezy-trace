@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import platform
 import sys
+import sysconfig
 from collections import deque
 from dataclasses import dataclass
 from importlib import metadata
@@ -219,19 +220,61 @@ def collect_packages() -> list[Package]:
 
 
 def _python_runtime() -> Package:
-    candidates = [
-        Path(sys.base_prefix) / "LICENSE.txt",
-        Path(sys.base_prefix) / "LICENSE",
-        Path(sys.executable).parent / "LICENSE.txt",
-    ]
-    for path in candidates:
-        if path.is_file():
-            return Package(
-                name="Python runtime",
-                version=platform.python_version(),
-                licence="PSF",
-                text=path.read_text(encoding="utf-8", errors="replace").strip(),
-            )
+    """Find the Python runtime licence file and return it as a Package."""
+
+    candidates: list[tuple[str, Path]] = []
+
+    # 1. sys.base_prefix/LICENSE.txt and LICENSE
+    base = Path(sys.base_prefix)
+    for stem in ("LICENSE.txt", "LICENSE"):
+        p = base / stem
+        if p.is_file():
+            candidates.append((f"sys.base_prefix/{stem}", p))
+
+    # 2. <sysconfig stdlib dir>/LICENSE.txt
+    stdlib_dir = Path(sysconfig.get_path("stdlib"))
+    for stem in ("LICENSE.txt", "LICENSE"):
+        p = stdlib_dir / stem
+        if p.is_file():
+            candidates.append((f"stdlib/{stem}", p))
+
+    # 3. its parent/LICENSE.txt
+    stdlib_parent = stdlib_dir.parent
+    for stem in ("LICENSE.txt", "LICENSE"):
+        p = stdlib_parent / stem
+        if p.is_file():
+            candidates.append((f"stdlib.parent/{stem}", p))
+
+    # 4. Path(sys.executable).parent/LICENSE.txt
+    exe_parent = Path(sys.executable).parent
+    for stem in ("LICENSE.txt", "LICENSE"):
+        p = exe_parent / stem
+        if p.is_file():
+            candidates.append((f"executable.parent/{stem}", p))
+
+    vendored = Path(__file__).resolve().parent / "licenses" / "PSF-LICENSE.txt"
+
+    if candidates:
+        source, path = candidates[0]
+        print(f"Python runtime licence: {source}")
+        text = path.read_text(encoding="utf-8", errors="replace").strip()
+        return Package(
+            name="Python runtime",
+            version=platform.python_version(),
+            licence="PSF",
+            text=text,
+        )
+
+    if vendored.is_file():
+        print("Python runtime licence: used the vendored copy")
+        text = vendored.read_text(encoding="utf-8", errors="replace").strip()
+        return Package(
+            name="Python runtime",
+            version=platform.python_version(),
+            licence="PSF",
+            text=text,
+        )
+
     raise SystemExit("error: could not find the Python runtime licence file.")
 
 
