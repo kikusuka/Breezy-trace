@@ -2,6 +2,7 @@
 
 import importlib.util
 import sys
+import sysconfig
 from pathlib import Path
 
 import pytest
@@ -87,6 +88,7 @@ def test_notice_licence_check_rejects_unlisted_licence():
 
 
 def test_notices_cover_the_bundle_and_fixed_components():
+    pytest.importorskip("PyInstaller")
     notices = _notices_module()
 
     packages = notices.collect_packages()
@@ -98,3 +100,54 @@ def test_notices_cover_the_bundle_and_fixed_components():
     assert "Licence: PSF" in rendered
     assert "PyInstaller bootloader" in rendered
     assert "GPL-2.0 with PyInstaller bootloader exception" in rendered
+
+
+def test_python_runtime_licence_discovery_order(tmp_path, monkeypatch):
+    """The licence file is found at the first matching path in search order."""
+    notices = _notices_module()
+
+    base = tmp_path / "base"
+    base.mkdir()
+    stdlib = tmp_path / "stdlib"
+    stdlib.mkdir()
+    exe_parent = tmp_path / "exe_parent"
+    exe_parent.mkdir()
+
+    # Only stdlib's parent (tmp_path) has a LICENSE.txt
+    (tmp_path / "LICENSE.txt").write_text("parent licence", encoding="utf-8")
+
+    monkeypatch.setattr(sys, "base_prefix", str(base))
+    monkeypatch.setattr(sysconfig, "get_path", lambda name: str(stdlib))
+    monkeypatch.setattr(sys, "executable", str(exe_parent / "python.exe"))
+
+    runtime = notices._python_runtime()
+    assert runtime.text == "parent licence"
+
+
+def test_python_runtime_licence_vendored_fallback(tmp_path, monkeypatch):
+    """When no system licence file exists, the vendored copy is used."""
+    notices = _notices_module()
+
+    base = tmp_path / "base"
+    base.mkdir()
+    stdlib = tmp_path / "stdlib"
+    stdlib.mkdir()
+    exe_parent = tmp_path / "exe_parent"
+    exe_parent.mkdir()
+
+    monkeypatch.setattr(sys, "base_prefix", str(base))
+    monkeypatch.setattr(sysconfig, "get_path", lambda name: str(stdlib))
+    monkeypatch.setattr(sys, "executable", str(exe_parent / "python.exe"))
+
+    runtime = notices._python_runtime()
+    assert runtime.text.strip()  # vendored copy has content
+
+
+def test_validate_licence_unknown_third_party_fails():
+    """Unknown third-party licences still fail the build."""
+    notices = _notices_module()
+
+    with pytest.raises(SystemExit) as error:
+        notices.validate_licence("example", "GPL-3.0")
+
+    assert "not on the allow-list" in str(error.value)

@@ -679,7 +679,7 @@ def test_resume_shows_where_the_project_lives_and_w_opens_it(tmp_path: Path, mon
 
 def test_slow_git_never_blocks_the_interface(tmp_path: Path, monkeypatch) -> None:
     """Regression: a slow repository used to freeze every key until its Git calls finished."""
-    import time
+    import threading
 
     import breezy_trace.app as app_module
 
@@ -687,8 +687,11 @@ def test_slow_git_never_blocks_the_interface(tmp_path: Path, monkeypatch) -> Non
     repository = _init_repo(tmp_path / "slow-project", commit=True)
     real = app_module.inspect_status
 
+    inspect_event = threading.Event()
+
     def slow(path):
-        time.sleep(2.0)  # far longer than the normal cost of registering a project
+        # Block until the test sets the event (with a 20s safety timeout).
+        inspect_event.wait(timeout=20.0)
         return real(path)
 
     monkeypatch.setattr(app_module, "inspect_status", slow)
@@ -696,16 +699,16 @@ def test_slow_git_never_blocks_the_interface(tmp_path: Path, monkeypatch) -> Non
     async def exercise() -> None:
         async with TraceApp(intro=False).run_test(size=(120, 36)) as pilot:
             app = pilot.app
-            started = time.monotonic()
             app._handle_project_pick(repository)
-            # Registering a project runs a few quick Git commands (slow on Windows), but the
-            # page must not wait for the 2-second status call: that is the freeze we fixed.
-            assert time.monotonic() - started < 1.2
+            # While Git is still blocked, the UI must keep answering.
             assert app.current_view == "overview"
             assert "Loading" in app._main.query_one("#content").render().plain
             await pilot.press("t")  # keys work while the page is still loading
             assert isinstance(app.screen, FormScreen)
             app.screen.dismiss(None)
+            await settle(pilot)
+            # Let Git finish and confirm the project name eventually appears.
+            inspect_event.set()
             await settle(pilot)
             assert "slow-project" in app._parts["overview"][0].plain
 
