@@ -17,6 +17,26 @@ class ProjectError(ValueError):
     """Raised when a project cannot be registered or resolved."""
 
 
+def project_root_reason(path: Path) -> str | None:
+    """Explain why ``path`` cannot be a project root, or return None when it can.
+
+    The home folder, every folder above it, and filesystem or drive roots are
+    never projects. A Git repository rooted there would otherwise capture every
+    folder below it, including real projects.
+    """
+    resolved = path.expanduser().resolve()
+    home = Path.home().expanduser().resolve()
+    if resolved == home:
+        return "your home folder"
+    if resolved == Path(resolved.anchor).resolve():
+        return "a drive root" if resolved.drive else "a filesystem root"
+    try:
+        home.relative_to(resolved)
+    except ValueError:
+        return None
+    return "a parent of your home folder"
+
+
 class ProjectRegistry:
     def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path or database_path()
@@ -56,6 +76,11 @@ class ProjectRegistry:
 
     def register(self, path: Path, name: str | None = None) -> Project:
         root = self.resolve_git_root(path)
+        reason = project_root_reason(root)
+        if reason is not None:
+            raise ProjectError(
+                f"This is {reason}, not a project. Register the project folder inside it instead."
+            )
         now = datetime.now(UTC).isoformat()
         project = Project(
             id=str(uuid.uuid4()),
@@ -100,6 +125,8 @@ class ProjectRegistry:
         try:
             root = self.resolve_git_root(path)
         except ProjectError:
+            return None
+        if project_root_reason(root) is not None:
             return None
         with closing(self._connect()) as connection, connection:
             row = connection.execute(

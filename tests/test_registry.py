@@ -8,7 +8,7 @@ from breezy_trace.registry import ProjectError, ProjectRegistry
 
 
 def make_repo(path: Path) -> Path:
-    path.mkdir()
+    path.mkdir(exist_ok=True)
     subprocess.run(["git", "init", str(path)], check=True, capture_output=True)
     return path
 
@@ -108,3 +108,65 @@ def test_non_git_directory_ignores_inherited_git_dir(tmp_path: Path, monkeypatch
         registry.register(directory)
 
     assert not any(key.upper().startswith("GIT_") for key in observed["env"])
+
+
+def test_home_folder_cannot_be_registered(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "owner-home"
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    repo = make_repo(home)
+    registry = ProjectRegistry(tmp_path / "trace.sqlite3")
+
+    with pytest.raises(
+        ProjectError,
+        match="This is your home folder, not a project. Register the project folder inside it",
+    ):
+        registry.register(repo)
+
+    assert registry.find_by_path(repo) is None
+    assert registry.list_projects() == []
+
+
+def test_registered_home_repository_cannot_capture_folders_below_it(
+    tmp_path: Path, monkeypatch
+) -> None:
+    stray = make_repo(tmp_path / "stray")
+    registry = ProjectRegistry(tmp_path / "trace.sqlite3")
+    project = registry.register(stray)
+    nested = stray / "src"
+    nested.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: stray))
+
+    assert registry.find_by_path(stray) is None
+    assert registry.find_by_path(nested) is None
+    assert registry.list_projects() == [project]
+
+
+def test_parent_of_home_cannot_be_registered(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "owner-home"
+    home.mkdir()
+    repo = make_repo(tmp_path)
+    nested = home / "src"
+    nested.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    registry = ProjectRegistry(tmp_path / "trace.sqlite3")
+
+    with pytest.raises(ProjectError, match="parent of your home folder, not a project"):
+        registry.register(repo)
+
+    assert registry.find_by_path(repo) is None
+    assert registry.find_by_path(nested) is None
+
+
+def test_filesystem_root_cannot_be_registered(tmp_path: Path, monkeypatch) -> None:
+    root = Path(Path.home().anchor)
+    monkeypatch.setattr(
+        ProjectRegistry,
+        "resolve_git_root",
+        classmethod(lambda cls, path: root),
+    )
+    registry = ProjectRegistry(tmp_path / "trace.sqlite3")
+
+    with pytest.raises(ProjectError, match="not a project. Register the project folder"):
+        registry.register(root)
+
+    assert registry.find_by_path(root) is None

@@ -97,7 +97,11 @@ cd ~/code/my-project
 breezy-trace register .
 ```
 
-Then run `breezy-trace` (or `trace` / `btrace`) from that registered repository to open its overview. From an unregistered Git repository, launch either command and confirm the registration prompt. From outside a repository, the command opens the global project selector.
+Then run `breezy-trace` (or `trace` / `btrace`) from that registered repository to open its overview. From an unregistered Git repository, launch either command and the lobby shows a hint; press `o` to add it. From outside a repository, the command opens the global project selector.
+
+## What counts as a project
+
+A project is a Git repository rooted in a normal folder. Your home folder, any folder above it, and filesystem or drive roots are never projects, even if they contain a `.git` folder. Register the repository folder itself instead.
 
 ## What you get
 
